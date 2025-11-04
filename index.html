@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tunable Piano Synthesizer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; font-size: 2.5em; }
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { transform: translateY(-2px); }
+        .btn-primary { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-blue { background: #3b82f6; color: white; }
+        .btn-purple { background: #8b5cf6; color: white; }
+        .recording-controls { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .rhythm-layer {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .rhythm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .piano-container {
+            background: linear-gradient(to bottom, #2d2d2d, #1a1a1a);
+            border-radius: 15px;
+            padding: 30px 20px;
+        }
+        .octave { position: relative; display: flex; justify-content: center; margin-bottom: 30px; height: 220px; }
+        .octave:last-child { margin-bottom: 0; }
+        .piano-key {
+            border: none;
+            cursor: pointer;
+            user-select: none;
+            font-family: monospace;
+            font-size: 11px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+        }
+        .piano-key.white {
+            width: 70px;
+            height: 220px;
+            background: linear-gradient(to bottom, #ffffff, #f0f0f0);
+            border: 2px solid #333;
+            border-radius: 0 0 8px 8px;
+            color: #333;
+            font-weight: bold;
+            z-index: 1;
+        }
+        .piano-key.white:active { background: linear-gradient(to bottom, #e0e0e0, #d0d0d0); transform: translateY(2px); }
+        .piano-key.black {
+            position: absolute;
+            width: 45px;
+            height: 140px;
+            background: linear-gradient(to bottom, #1a1a1a, #000000);
+            border: 2px solid #000;
+            border-radius: 0 0 6px 6px;
+            color: #fff;
+            font-weight: bold;
+            z-index: 2;
+        }
+        .piano-key.black:active { background: linear-gradient(to bottom, #0a0a0a, #000000); transform: translateY(2px); }
+        .black-1 { left: 48px; }
+        .black-2 { left: 118px; }
+        .black-3 { left: 258px; }
+        .black-4 { left: 328px; }
+        .black-5 { left: 398px; }
+        .octave-label { text-align: center; font-weight: bold; margin-bottom: 10px; }
+        h2 { font-size: 1.8em; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎹 Tunable Piano Synthesizer</h1>
+        
+        <div class="panel">
+            <div class="controls-grid">
+                <div>
+                    <label>Base Frequency (Hz)</label>
+                    <input type="number" id="baseFreq" value="440.00000" step="0.00001" min="0" max="2000">
+                </div>
+                <div>
+                    <label>BPM</label>
+                    <input type="number" id="bpm" value="120" min="0" max="300">
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="recording-controls">
+                <button id="recordBtn" class="btn-primary">● Start Recording</button>
+                <button id="downloadBtn" class="btn-blue" style="display:none;">⬇ Download</button>
+            </div>
+            <div id="recordStatus" style="text-align:center;margin-top:15px;display:none;"></div>
+        </div>
+
+        <div class="panel">
+            <div class="rhythm-header">
+                <h2>Rhythm Layers</h2>
+                <button id="addLayerBtn" class="btn-primary">+ Add Layer</button>
+            </div>
+            <div id="rhythmLayers"><p style="text-align:center;">Click Add Layer to start</p></div>
+            <button id="playRhythmBtn" class="btn-purple" style="display:none;width:100%;margin-top:15px;">▶ Play Rhythms</button>
+        </div>
+
+        <div class="panel">
+            <h2>Piano</h2>
+            <div class="piano-container">
+                <div class="octave-label">Octave 4</div>
+                <div id="octave4" class="octave"></div>
+                <div class="octave-label">Octave 3</div>
+                <div id="octave3" class="octave"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var ctx, dest, rec, chunks=[], oscs={}, layers=[], intervals=[], playing=false;
+        var patterns = {
+            'Basic': [1,0,0,0,1,0,0,0],
+            'Backbeat': [1,0,1,0,1,0,1,0],
+            'Syncopated': [1,0,0,1,0,0,1,0],
+            'Fast': [1,1,1,1,1,1,1,1],
+            'Shuffle': [1,0,1,0,0,1,0,0]
+        };
+        var noteRatios = [1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8];
+
+        function init() {
+            if (!ctx) {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+                dest = ctx.createMediaStreamDestination();
+            }
+        }
+
+        function freq(idx) {
+            var base = parseFloat(document.getElementById('baseFreq').value) || 440;
+            return base * noteRatios[idx % 12] * Math.pow(2, Math.floor(idx/12)-1);
+        }
+
+        function play(idx) {
+            init();
+            if (oscs[idx]) return;
+            var o = ctx.createOscillator(), g = ctx.createGain();
+            o.frequency.value = freq(idx);
+            g.gain.setValueAtTime(0, ctx.currentTime);
+            g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+            o.connect(g); g.connect(ctx.destination); g.connect(dest);
+            o.start();
+            oscs[idx] = {o:o, g:g};
+        }
+
+        function stop(idx) {
+            if (!oscs[idx]) return;
+            var data = oscs[idx];
+            data.g.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+            setTimeout(function() {
+                try { data.o.stop(); } catch(e) {}
+                delete oscs[idx];
+            }, 100);
+        }
+
+        function drum(type, base) {
+            init();
+            var t = ctx.currentTime;
+            if (type === 'Bass Drum') {
+                var o = ctx.createOscillator(), g = ctx.createGain(), f = base * 0.5;
+                o.frequency.setValueAtTime(f, t);
+                o.frequency.exponentialRampToValueAtTime(Math.max(f*0.01, 0.01), t+0.1);
+                g.gain.setValueAtTime(0.8, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t+0.3);
+                o.connect(g); g.connect(ctx.destination); g.connect(dest);
+                o.start(t); o.stop(t+0.3);
+            } else {
+                var n = ctx.createBufferSource();
+                var buf = ctx.createBuffer(1, ctx.sampleRate*0.2, ctx.sampleRate);
+                var d = buf.getChannelData(0);
+                for (var i=0; i<d.length; i++) d[i] = Math.random()*2-1;
+                n.buffer = buf;
+                var filt = ctx.createBiquadFilter();
+                filt.type = 'highpass';
+                filt.frequency.value = base * (type==='Hi-Hat'?8:2);
+                var g = ctx.createGain();
+                g.gain.setValueAtTime(0.3, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t+0.1);
+                n.connect(filt); filt.connect(g); g.connect(ctx.destination); g.connect(dest);
+                n.start(t);
+            }
+        }
+
+        function startRhy(layer) {
+            var pat = patterns[layer.pattern];
+            var bpm = parseInt(document.getElementById('bpm').value) || 120;
+            var base = parseFloat(document.getElementById('baseFreq').value) || 440;
+            var beat = 0;
+            return setInterval(function() {
+                if (pat[beat % pat.length]) drum(layer.instrument, base);
+                beat++;
+            }, 60/bpm*1000);
+        }
+
+        function toggleRhy() {
+            if (playing) {
+                intervals.forEach(clearInterval);
+                intervals = [];
+                playing = false;
+                document.getElementById('playRhythmBtn').innerHTML = '▶ Play Rhythms';
+            } else {
+                intervals = layers.map(startRhy);
+                playing = true;
+                document.getElementById('playRhythmBtn').innerHTML = '■ Stop Rhythms';
+            }
+        }
+
+        function addLayer() {
+            if (layers.length >= 5) return;
+            layers.push({id: Date.now(), instrument: 'Bass Drum', pattern: 'Basic'});
+            renderLayers();
+        }
+
+        function removeLayer(id) {
+            layers = layers.filter(function(l) { return l.id !== id; });
+            intervals.forEach(clearInterval);
+            intervals = [];
+            playing = false;
+            renderLayers();
+        }
+
+        function updateLayer(id, field, value) {
+            for (var i=0; i<layers.length; i++) {
+                if (layers[i].id === id) {
+                    layers[i][field] = value;
+                    break;
+                }
+            }
+        }
+
+        function renderLayers() {
+            var cont = document.getElementById('rhythmLayers');
+            var btn = document.getElementById('playRhythmBtn');
+            if (layers.length === 0) {
+                cont.innerHTML = '<p style="text-align:center;">Click Add Layer to start</p>';
+                btn.style.display = 'none';
+            } else {
+                btn.style.display = 'block';
+                var html = '';
+                var insts = ['Bass Drum', 'Snare', 'Hi-Hat', 'Shaker', 'Djembe'];
+                var pats = ['Basic', 'Backbeat', 'Syncopated', 'Fast', 'Shuffle'];
+                for (var i=0; i<layers.length; i++) {
+                    var l = layers[i];
+                    html += '<div class="rhythm-layer">';
+                    html += '<select onchange="updateLayer('+l.id+',\'instrument\',this.value)" style="width:auto;">';
+                    for (var j=0; j<insts.length; j++) {
+                        html += '<option '+(l.instrument===insts[j]?'selected':'')+'>'+insts[j]+'</option>';
+                    }
+                    html += '</select>';
+                    html += '<select onchange="updateLayer('+l.id+',\'pattern\',this.value)" style="width:auto;">';
+                    for (var k=0; k<pats.length; k++) {
+                        html += '<option '+(l.pattern===pats[k]?'selected':'')+'>'+pats[k]+'</option>';
+                    }
+                    html += '</select>';
+                    html += '<button class="btn-danger" onclick="removeLayer('+l.id+')">✕ Remove</button>';
+                    html += '</div>';
+                }
+                cont.innerHTML = html;
+            }
+            document.getElementById('addLayerBtn').disabled = layers.length >= 5;
+        }
+
+        function startRec() {
+            init();
+            chunks = [];
+            try {
+                rec = new MediaRecorder(dest.stream);
+                rec.ondataavailable = function(e) { if (e.data.size > 0) chunks.push(e.data); };
+                rec.onstop = function() {
+                    var blob = new Blob(chunks, {type: 'audio/webm'});
+                    var url = URL.createObjectURL(blob);
+                    document.getElementById('downloadBtn').onclick = function() {
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'recording-'+Date.now()+'.webm';
+                        a.click();
+                    };
+                    document.getElementById('downloadBtn').style.display = 'inline-flex';
+                };
+                rec.start();
+                document.getElementById('recordBtn').className = 'btn-danger';
+                document.getElementById('recordBtn').innerHTML = '■ Stop Recording';
+                document.getElementById('recordStatus').style.display = 'block';
+                document.getElementById('recordStatus').textContent = 'Recording... (Max 5 min)';
+                setTimeout(function() { if (rec && rec.state === 'recording') stopRec(); }, 300000);
+            } catch(e) { alert('Recording failed'); }
+        }
+
+        function stopRec() {
+            if (rec && rec.state === 'recording') {
+                rec.stop();
+                document.getElementById('recordBtn').className = 'btn-primary';
+                document.getElementById('recordBtn').innerHTML = '● Start Recording';
+                document.getElementById('recordStatus').style.display = 'none';
+            }
+        }
+
+        function createOctave(id, start) {
+            var cont = document.getElementById(id);
+            cont.innerHTML = '';
+            var whites = [0, 2, 4, 5, 7, 9, 11];
+            for (var i=0; i<whites.length; i++) {
+                var idx = start + whites[i];
+                var btn = document.createElement('button');
+                btn.className = 'piano-key white';
+                btn.textContent = freq(idx).toFixed(2) + 'Hz';
+                btn.setAttribute('data-note', idx);
+                btn.onmousedown = function(e) { play(parseInt(e.target.getAttribute('data-note'))); };
+                btn.onmouseup = function(e) { stop(parseInt(e.target.getAttribute('data-note'))); };
+                btn.onmouseleave = function(e) { stop(parseInt(e.target.getAttribute('data-note'))); };
+                btn.ontouchstart = function(e) { e.preventDefault(); play(parseInt(e.target.getAttribute('data-note'))); };
+                btn.ontouchend = function(e) { e.preventDefault(); stop(parseInt(e.target.getAttribute('data-note'))); };
+                cont.appendChild(btn);
+            }
+            var blacks = [1, 3, 6, 8, 10];
+            var classes = ['black-1', 'black-2', 'black-3', 'black-4', 'black-5'];
+            for (var i=0; i<blacks.length; i++) {
+                var idx = start + blacks[i];
+                var btn = document.createElement('button');
+                btn.className = 'piano-key black ' + classes[i];
+                btn.textContent = freq(idx).toFixed(2) + 'Hz';
+                btn.setAttribute('data-note', idx);
+                btn.onmousedown = function(e) { play(parseInt(e.target.getAttribute('data-note'))); };
+                btn.onmouseup = function(e) { stop(parseInt(e.target.getAttribute('data-note'))); };
+                btn.onmouseleave = function(e) { stop(parseInt(e.target.getAttribute('data-note'))); };
+                btn.ontouchstart = function(e) { e.preventDefault(); play(parseInt(e.target.getAttribute('data-note'))); };
+                btn.ontouchend = function(e) { e.preventDefault(); stop(parseInt(e.target.getAttribute('data-note'))); };
+                cont.appendChild(btn);
+            }
+        }
+
+        function createPiano() {
+            createOctave('octave4', 24);
+            createOctave('octave3', 12);
+        }
+
+        createPiano();
+        renderLayers();
+        document.getElementById('baseFreq').addEventListener('input', createPiano);
+        document.getElementById('recordBtn').onclick = function() {
+            if (rec && rec.state === 'recording') stopRec(); else startRec();
+        };
+        document.getElementById('addLayerBtn').onclick = addLayer;
+        document.getElementById('playRhythmBtn').onclick = toggleRhy;
+    </script>
+</body>
+</html>
