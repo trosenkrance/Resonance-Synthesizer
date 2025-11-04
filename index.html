@@ -62,7 +62,15 @@
             border-radius: 15px;
             padding: 30px 20px;
         }
-        .octave { position: relative; display: flex; justify-content: center; margin-bottom: 30px; height: 220px; }
+        .octave { 
+            position: relative; 
+            display: inline-block;
+            margin-bottom: 30px; 
+            height: 220px;
+        }
+        .octave-wrapper {
+            text-align: center;
+        }
         .octave:last-child { margin-bottom: 0; }
         .piano-key {
             border: none;
@@ -70,39 +78,51 @@
             user-select: none;
             font-family: monospace;
             font-size: 11px;
-            display: flex;
+            display: inline-flex;
             align-items: flex-end;
             justify-content: center;
             padding-bottom: 10px;
+            vertical-align: top;
         }
         .piano-key.white {
-            width: 70px;
+            width: 60px;
             height: 220px;
             background: linear-gradient(to bottom, #ffffff, #f0f0f0);
             border: 2px solid #333;
             border-radius: 0 0 8px 8px;
             color: #333;
             font-weight: bold;
-            z-index: 1;
+            position: relative;
         }
         .piano-key.white:active { background: linear-gradient(to bottom, #e0e0e0, #d0d0d0); transform: translateY(2px); }
         .piano-key.black {
             position: absolute;
-            width: 45px;
+            width: 40px;
             height: 140px;
             background: linear-gradient(to bottom, #1a1a1a, #000000);
             border: 2px solid #000;
             border-radius: 0 0 6px 6px;
             color: #fff;
             font-weight: bold;
-            z-index: 2;
+            z-index: 10;
+            margin-left: -20px;
         }
         .piano-key.black:active { background: linear-gradient(to bottom, #0a0a0a, #000000); transform: translateY(2px); }
-        .black-1 { left: 48px; }
-        .black-2 { left: 118px; }
-        .black-3 { left: 258px; }
-        .black-4 { left: 328px; }
-        .black-5 { left: 398px; }
+        
+        /* Correct black key positioning - positioned after each white key */
+        .key-c { margin-left: 0; }
+        .key-cs { left: 60px; }
+        .key-d { }
+        .key-ds { left: 120px; }
+        .key-e { }
+        .key-f { }
+        .key-fs { left: 240px; }
+        .key-g { }
+        .key-gs { left: 300px; }
+        .key-a { }
+        .key-as { left: 360px; }
+        .key-b { }
+        
         .octave-label { text-align: center; font-weight: bold; margin-bottom: 10px; }
         h2 { font-size: 1.8em; margin-bottom: 15px; }
     </style>
@@ -116,6 +136,18 @@
                 <div>
                     <label>Base Frequency (Hz)</label>
                     <input type="number" id="baseFreq" value="440.00000" step="0.00001" min="0" max="2000">
+                </div>
+                <div>
+                    <label>Instrument</label>
+                    <select id="instrument">
+                        <option>Piano</option>
+                        <option>Guitar</option>
+                        <option>Bass</option>
+                        <option>Strings</option>
+                        <option>Flute</option>
+                        <option>Crystal Bowl</option>
+                        <option>Organ</option>
+                    </select>
                 </div>
                 <div>
                     <label>BPM</label>
@@ -145,9 +177,13 @@
             <h2>Piano</h2>
             <div class="piano-container">
                 <div class="octave-label">Octave 4</div>
-                <div id="octave4" class="octave"></div>
+                <div class="octave-wrapper">
+                    <div id="octave4" class="octave"></div>
+                </div>
                 <div class="octave-label">Octave 3</div>
-                <div id="octave3" class="octave"></div>
+                <div class="octave-wrapper">
+                    <div id="octave3" class="octave"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -162,6 +198,9 @@
             'Shuffle': [1,0,1,0,0,1,0,0]
         };
         var noteRatios = [1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8];
+        var noteNames = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b'];
+        var whiteKeys = [0, 2, 4, 5, 7, 9, 11];
+        var blackKeys = [1, 3, 6, 8, 10];
 
         function init() {
             if (!ctx) {
@@ -175,26 +214,55 @@
             return base * noteRatios[idx % 12] * Math.pow(2, Math.floor(idx/12)-1);
         }
 
+        function getInstrumentConfig() {
+            var inst = document.getElementById('instrument').value;
+            var configs = {
+                'Piano': { type: 'triangle', attack: 0.01, decay: 0.3, sustain: 0.7, release: 0.1 },
+                'Guitar': { type: 'sawtooth', attack: 0.005, decay: 0.2, sustain: 0.3, release: 0.5 },
+                'Bass': { type: 'sine', attack: 0.01, decay: 0.15, sustain: 0.8, release: 0.1 },
+                'Strings': { type: 'sawtooth', attack: 0.15, decay: 0.3, sustain: 0.8, release: 0.3 },
+                'Flute': { type: 'sine', attack: 0.08, decay: 0.1, sustain: 0.7, release: 0.15 },
+                'Crystal Bowl': { type: 'sine', attack: 0.02, decay: 2.0, sustain: 0.9, release: 2.0 },
+                'Organ': { type: 'sine', attack: 0.001, decay: 0.1, sustain: 0.9, release: 0.05 }
+            };
+            return configs[inst] || configs['Piano'];
+        }
+
         function play(idx) {
             init();
             if (oscs[idx]) return;
-            var o = ctx.createOscillator(), g = ctx.createGain();
+            
+            var config = getInstrumentConfig();
+            var o = ctx.createOscillator();
+            var g = ctx.createGain();
+            
+            o.type = config.type;
             o.frequency.value = freq(idx);
-            g.gain.setValueAtTime(0, ctx.currentTime);
-            g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
-            o.connect(g); g.connect(ctx.destination); g.connect(dest);
+            
+            var now = ctx.currentTime;
+            g.gain.setValueAtTime(0, now);
+            g.gain.linearRampToValueAtTime(0.3, now + config.attack);
+            g.gain.linearRampToValueAtTime(0.3 * config.sustain, now + config.attack + config.decay);
+            
+            o.connect(g);
+            g.connect(ctx.destination);
+            g.connect(dest);
+            
             o.start();
-            oscs[idx] = {o:o, g:g};
+            oscs[idx] = {o:o, g:g, config:config};
         }
 
         function stop(idx) {
             if (!oscs[idx]) return;
             var data = oscs[idx];
-            data.g.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+            var now = ctx.currentTime;
+            data.g.gain.cancelScheduledValues(now);
+            data.g.gain.setValueAtTime(data.g.gain.value, now);
+            data.g.gain.linearRampToValueAtTime(0, now + data.config.release);
             setTimeout(function() {
                 try { data.o.stop(); } catch(e) {}
                 delete oscs[idx];
-            }, 100);
+            }, data.config.release * 1000 + 100);
         }
 
         function drum(type, base) {
@@ -216,7 +284,7 @@
                 n.buffer = buf;
                 var filt = ctx.createBiquadFilter();
                 filt.type = 'highpass';
-                filt.frequency.value = base * (type==='Hi-Hat'?8:2);
+                filt.frequency.value = base * (type==='Hi-Hat'?8:type==='Shaker'?6:2);
                 var g = ctx.createGain();
                 g.gain.setValueAtTime(0.3, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t+0.1);
@@ -342,11 +410,13 @@
         function createOctave(id, start) {
             var cont = document.getElementById(id);
             cont.innerHTML = '';
-            var whites = [0, 2, 4, 5, 7, 9, 11];
-            for (var i=0; i<whites.length; i++) {
-                var idx = start + whites[i];
+            
+            // Create white keys first
+            for (var i=0; i<whiteKeys.length; i++) {
+                var noteOffset = whiteKeys[i];
+                var idx = start + noteOffset;
                 var btn = document.createElement('button');
-                btn.className = 'piano-key white';
+                btn.className = 'piano-key white key-' + noteNames[noteOffset];
                 btn.textContent = freq(idx).toFixed(2) + 'Hz';
                 btn.setAttribute('data-note', idx);
                 btn.onmousedown = function(e) { play(parseInt(e.target.getAttribute('data-note'))); };
@@ -356,12 +426,13 @@
                 btn.ontouchend = function(e) { e.preventDefault(); stop(parseInt(e.target.getAttribute('data-note'))); };
                 cont.appendChild(btn);
             }
-            var blacks = [1, 3, 6, 8, 10];
-            var classes = ['black-1', 'black-2', 'black-3', 'black-4', 'black-5'];
-            for (var i=0; i<blacks.length; i++) {
-                var idx = start + blacks[i];
+            
+            // Create black keys on top
+            for (var i=0; i<blackKeys.length; i++) {
+                var noteOffset = blackKeys[i];
+                var idx = start + noteOffset;
                 var btn = document.createElement('button');
-                btn.className = 'piano-key black ' + classes[i];
+                btn.className = 'piano-key black key-' + noteNames[noteOffset];
                 btn.textContent = freq(idx).toFixed(2) + 'Hz';
                 btn.setAttribute('data-note', idx);
                 btn.onmousedown = function(e) { play(parseInt(e.target.getAttribute('data-note'))); };
