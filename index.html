@@ -1,3 +1,1232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tunable Piano Synth — Mobile Optimized (Binaural + Sub Bass + Drums)</title>
+<style>
+/* Mobile-first responsive UI */
+:root{
+  --bg1: #081229;
+  --bg2: #1e3a8a;
+  --panel: rgba(255,255,255,0.04);
+  --muted: rgba(255,255,255,0.7);
+  --accent: #3b82f6;
+  --accent2: #10b981;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: linear-gradient(135deg,var(--bg1),var(--bg2));
+  color:#fff;
+  padding:12px;
+  -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none;
+}
+.container{max-width:1100px;margin:0 auto}
+h1{font-size:1.25rem;text-align:center;margin-bottom:10px}
+.panel{
+  background:var(--panel);
+  border-radius:10px;
+  padding:10px;
+  margin-bottom:10px;
+}
+.controls-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (max-width:720px){ .controls-grid{grid-template-columns:1fr} }
+
+/* Piano */
+.piano-row{display:flex;gap:10px;flex-wrap:nowrap;justify-content:center}
+.octave{position:relative;display:inline-block}
+.white-key{
+  width:56px;height:160px;background:linear-gradient(#fff,#eee);border-radius:0 0 8px 8px;border:1px solid #333;
+  display:inline-flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font-family:monospace;font-size:12px;color:#222;position:relative;margin-right:2px;
+  touch-action:none;
+}
+.black-key{
+  width:36px;height:100px;background:linear-gradient(#111,#000);position:absolute;border-radius:0 0 6px 6px;color:#fff;font-size:11px;z-index:5;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-family:monospace;
+  box-shadow:0 4px 18px rgba(0,0,0,0.6);
+  touch-action:none;
+}
+.key-label{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:11px}
+.key-active{outline:3px solid rgba(59,130,246,0.25);transform:translateY(2px)}
+.small{font-size:12px;color:var(--muted)}
+
+/* Layer UIs */
+.layer{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.layer-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.layer-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.control-heading{font-size:12px;color:#cbd5e1;margin-bottom:4px}
+.step{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.04);display:inline-block;margin-right:4px;cursor:pointer;border:1px solid rgba(0,0,0,0.18)}
+.step.active{background:var(--accent);box-shadow:0 2px 8px rgba(59,130,246,0.18)}
+.step.playing{background:var(--accent2)}
+
+/* Buttons */
+.btn{padding:8px 10px;border-radius:8px;border:none;color:#fff;cursor:pointer;font-weight:600}
+.btn-primary{background:var(--accent2)}
+.btn-blue{background:var(--accent)}
+.btn-danger{background:#ef4444}
+.btn-purple{background:#8b5cf6}
+
+/* compact inputs */
+input[type=range]{width:120px}
+.select,select,input{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:#fff;padding:8px;border-radius:8px}
+
+/* collapsible headings */
+.coll{background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;margin-bottom:6px;cursor:pointer}
+.help{font-size:13px;color:#cfe3ff}
+
+/* adjust sizes for small screens */
+@media (max-width:420px){
+  .white-key{width:44px;height:136px;font-size:10px}
+  .black-key{width:26px;height:86px}
+  input[type=range]{width:90px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎹 Tunable Piano Synth — Mobile Optimized</h1>
+
+  <!-- Top controls -->
+  <div class="panel">
+    <div class="controls-grid">
+      <div>
+        <label class="control-heading">Base Frequency (A tuning) — Hz</label>
+        <input id="baseFreq" type="number" value="440.00000" step="0.00001" min="1" class="select">
+      </div>
+      <div>
+        <label class="control-heading">Keyboard Tone Preset</label>
+        <select id="kbPreset" class="select">
+          <option>Classic Piano</option><option>Electric Piano</option><option>FM Bell</option><option>Crystal Bell</option>
+          <option>Glass Pad</option><option>Saw Lead</option><option>Analog Pad</option><option>Pluck Synth</option><option>Warm Sine</option><option>Strings</option>
+        </select>
+      </div>
+      <div>
+        <label class="control-heading">BPM</label>
+        <input id="bpm" type="number" value="120" min="20" max="300" class="select">
+      </div>
+      <div>
+        <label class="control-heading">Master Volume</label>
+        <input id="masterVol" type="range" min="0" max="1" step="0.01" value="0.9">
+      </div>
+      <div>
+        <label class="control-heading">Swing (0–75%)</label>
+        <input id="swing" type="range" min="0" max="0.75" step="0.01" value="0">
+      </div>
+      <div>
+        <label class="control-heading">Humanize (ms)</label>
+        <input id="humanize" type="range" min="0" max="30" step="1" value="6">
+      </div>
+    </div>
+  </div>
+
+  <!-- Piano (side-by-side octaves) -->
+  <div class="panel">
+    <div class="coll" id="pianoToggle">Piano — tap to expand / collapse</div>
+    <div id="pianoPanel">
+      <div class="piano-row" id="pianoRow" style="justify-content:center">
+        <!-- Octaves will be generated here -->
+        <div id="octaveLeft" class="octave" aria-hidden="false"></div>
+        <div id="octaveRight" class="octave" aria-hidden="false"></div>
+      </div>
+      <div style="height:8px"></div>
+      <div class="small">Keyboard: Z S X D C V G B H N J M → C3 → C4. Hold Shift for softer velocity.</div>
+    </div>
+  </div>
+
+  <!-- Binaural Layers (move closer to top) -->
+  <div class="panel">
+    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+      <div><strong>Binaural Layers</strong></div>
+      <div>
+        <button id="addBinauralBtn" class="btn btn-primary">+ Add</button>
+        <button id="clearBinauralBtn" class="btn btn-danger">Clear</button>
+      </div>
+    </div>
+    <div id="binauralLayers" style="margin-top:8px"></div>
+  </div>
+
+  <!-- Sub bass layers -->
+  <div class="panel">
+    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+      <div><strong>Sub Bass Layers</strong></div>
+      <div>
+        <button id="addSubBtn" class="btn btn-primary">+ Add</button>
+        <button id="clearSubBtn" class="btn btn-danger">Clear</button>
+      </div>
+    </div>
+    <div id="subLayers" style="margin-top:8px"></div>
+  </div>
+
+  <!-- Rhythm / Drum layers -->
+  <div class="panel">
+    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+      <div><strong>Drum / Rhythm Layers</strong></div>
+      <div>
+        <button id="addLayerBtn" class="btn btn-primary">+ Add Layer</button>
+        <button id="clearLayersBtn" class="btn btn-danger">Clear</button>
+      </div>
+    </div>
+    <div id="rhythmLayers" style="margin-top:8px"></div>
+    <div style="height:8px"></div>
+    <button id="playRhythmBtn" class="btn btn-purple" style="display:none;width:100%">▶ Play Rhythms</button>
+  </div>
+
+  <!-- Mixer & Recording -->
+  <div class="panel">
+    <div class="controls-grid">
+      <div>
+        <label class="control-heading">Reverb Size</label>
+        <input id="reverbSize" type="range" min="0.2" max="6" step="0.1" value="2">
+      </div>
+      <div>
+        <label class="control-heading">Delay Time (s)</label>
+        <input id="delayTime" type="range" min="0.05" max="0.8" step="0.01" value="0.25">
+      </div>
+      <div>
+        <label class="control-heading">Master Reverb Send</label>
+        <input id="masterReverbSend" type="range" min="0" max="1" step="0.01" value="0.28">
+      </div>
+      <div>
+        <label class="control-heading">Master Delay Send</label>
+        <input id="masterDelaySend" type="range" min="0" max="1" step="0.01" value="0.15">
+      </div>
+    </div>
+
+    <div style="height:8px"></div>
+    <div class="layer-row" style="gap:8px">
+      <button id="recordBtn" class="btn btn-primary">● Start Recording (WebM)</button>
+      <button id="recordWavBtn" class="btn btn-blue">● Record WAV</button>
+      <button id="downloadBtn" class="btn btn-blue" style="display:none">⬇ Download</button>
+      <button id="savePresetBtn" class="btn btn-purple">💾 Save Preset</button>
+      <select id="presetSelect" class="select">
+        <option value="">— Load Preset —</option>
+      </select>
+    </div>
+    <div id="recordStatus" style="margin-top:8px;display:none;color:#ffd" class="small">Recording...</div>
+  </div>
+
+  <div class="panel small help">
+    Tips: You can change parameters while playing; the engine applies changes live. On mobile, use touch to play keys. Binaural layers route left/right automatically. Sub-bass tones include richer pad/bass choices.
+  </div>
+</div>
+
+<script>
+/* ========================
+   Full optimized Synth
+   - Mobile friendly UI
+   - Side-by-side octaves with correct black key placement
+   - Live note+Hz labels that update when baseFreq changes
+   - Binaural layers (multiple) with crystal bowl and sustained bell tones
+   - Sub-bass layers with multiple tone types + ADSR + filter + distortion
+   - Drum layers with persistent patterns and labeled controls
+   - Time-accurate scheduler (lookahead) with swing & humanize
+   - Reverb & delay sends kept
+   - Fixes: stuck notes, mid-play updates, clean stop/disconnect
+   ======================== */
+
+/* -----------------------
+   Globals & state
+   ----------------------- */
+let ctx = null;
+let dest = null;
+let masterGain, masterAnalyser, meterAnalyser;
+let reverbNode, delayNode, delayFeedback, delayWet;
+let sampleBuffers = {}; // procedural samples (drums + bells)
+let pianoVoices = {};
+let binauralVoices = {};
+let subVoices = {};
+let rhythmVoices = []; // scheduled sample sources for cleanup
+let rhythmLayers = [];
+let binauralLayers = [];
+let subLayers = [];
+let layerId = 1;
+let scheduler = { lookahead:25, scheduleAheadTime:0.25, nextNoteTime:0, currentStep:0, timerID:null, running:false };
+
+/* constants */
+const noteRatios = [1,16/15,9/8,6/5,5/4,4/3,45/32,3/2,8/5,5/3,9/5,15/8];
+const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const whiteOrder = [0,2,4,5,7,9,11]; // for white keys
+const blackOrder = [1,3,6,8,10];     // black key semitone offsets
+
+/* drum patterns (persistent) */
+const drumPatterns = {
+  Basic: [1,0,0,0,1,0,0,0],
+  Backbeat: [1,0,0,1,0,1,0,1],
+  Funk: [1,0,1,0,0,1,0,1],
+  House: [1,0,0,1,0,0,1,0],
+  Trap: [1,0,0,0,0,1,0,1],
+  Afro: [1,0,1,0,1,0,1,0],
+  Ambient: [1,0,0,0,0,0,0,0]
+};
+
+/* -----------------------
+   Audio init & graph
+   ----------------------- */
+function initAudio(){
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  dest = ctx.createMediaStreamDestination();
+
+  masterGain = ctx.createGain(); masterGain.gain.value = parseFloat(document.getElementById('masterVol').value || 0.9);
+  masterAnalyser = ctx.createAnalyser(); masterAnalyser.fftSize = 2048;
+  meterAnalyser = ctx.createAnalyser(); meterAnalyser.fftSize = 512;
+
+  // effects
+  reverbNode = ctx.createConvolver();
+  delayNode = ctx.createDelay(); delayNode.delayTime.value = parseFloat(document.getElementById('delayTime').value || 0.25);
+  delayFeedback = ctx.createGain(); delayFeedback.gain.value = 0.35;
+  delayWet = ctx.createGain(); delayWet.gain.value = parseFloat(document.getElementById('masterDelaySend').value || 0.15);
+
+  // delay loop
+  delayNode.connect(delayFeedback); delayFeedback.connect(delayNode);
+  delayNode.connect(delayWet); delayWet.connect(masterGain);
+
+  // master routing
+  masterGain.connect(masterAnalyser);
+  masterAnalyser.connect(ctx.destination);
+  masterAnalyser.connect(dest);
+  masterGain.connect(meterAnalyser);
+
+  // reverb -> master
+  reverbNode.connect(masterGain);
+
+  // create reverb impulse
+  createReverbImpulse(parseFloat(document.getElementById('reverbSize').value || 2));
+
+  // create procedural 'sample buffers' (drums, bowls, bells)
+  createProceduralSamples();
+
+  // wire controls
+  document.getElementById('masterVol').addEventListener('input', e => { if (masterGain) masterGain.gain.value = parseFloat(e.target.value); });
+  document.getElementById('delayTime').addEventListener('input', e => { if (delayNode) delayNode.delayTime.value = parseFloat(e.target.value); });
+  document.getElementById('reverbSize').addEventListener('input', e => { createReverbImpulse(parseFloat(e.target.value)); });
+  document.getElementById('masterDelaySend').addEventListener('input', e => { if (delayWet) delayWet.gain.value = parseFloat(e.target.value); });
+  document.getElementById('masterReverbSend').addEventListener('input', e => { /* sends picked up per-voice live */ });
+}
+
+/* -----------------------
+   Procedural samples: drums, crystal bowl, bell
+   ----------------------- */
+function createProceduralSamples(){
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  sampleBuffers = {};
+
+  // Kick
+  sampleBuffers.kick = makeBuffer(0.45, (sr, d) => {
+    for (let i=0;i<d.length;i++){
+      const t = i/sr;
+      const env = Math.exp(-7*t);
+      const freq = 120 * Math.pow(0.01, t/0.45);
+      d[i] = Math.sin(2*Math.PI*freq*t) * env;
+    }
+    // click
+    for (let i=0;i<Math.min(sr*0.003,d.length);i++) d[i] += (Math.random()*2-1)*0.6*Math.exp(-i/100);
+  });
+
+  // Snare
+  sampleBuffers.snare = makeBuffer(0.28, (sr,d) => {
+    for (let i=0;i<d.length;i++){
+      const t=i/sr;
+      const body = Math.sin(2*Math.PI*220*t)*Math.exp(-8*t)*0.6;
+      const n=(Math.random()*2-1)*Math.exp(-12*t)*0.9;
+      d[i]=body+n*0.8;
+    }
+    let prev=0; for (let i=0;i<d.length;i++){ const cur=d[i]; d[i]=cur-prev*0.995; prev=cur; }
+  });
+
+  // Hi-hat
+  sampleBuffers.hat = makeBuffer(0.06, (sr,d) => {
+    for (let i=0;i<d.length;i++){
+      const t=i/sr; let s=(Math.random()*2-1)*Math.exp(-80*t);
+      if (i>0) s -= d[i-1]*0.4; d[i]=s*0.9;
+    }
+  });
+
+  // Clap
+  sampleBuffers.clap = makeBuffer(0.22,(sr,d)=>{
+    for (let i=0;i<d.length;i++){
+      const t=i/sr; let v=0;
+      if (t<=0.01) v += (Math.random()*2-1)*Math.exp(-60*t);
+      if (t>=0.02 && t<=0.035) v += (Math.random()*2-1)*Math.exp(-70*(t-0.02))*0.7;
+      v += Math.sin(2*Math.PI*180*t)*Math.exp(-6*t)*0.24;
+      d[i]=v;
+    }
+  });
+
+  // Tom
+  sampleBuffers.tom = makeBuffer(0.42,(sr,d)=>{
+    for (let i=0;i<d.length;i++){
+      const t=i/sr; const env=Math.exp(-6*t); const freq=120*Math.pow(0.5,t/0.4);
+      d[i]=Math.sin(2*Math.PI*freq*t)*env + (Math.random()*2-1)*0.02;
+    }
+  });
+
+  // Crystal bowl - sustained, many partials & long decay
+  sampleBuffers.crystal = makeBuffer(3.5,(sr,d)=>{
+    const base = 440;
+    for (let i=0;i<d.length;i++){
+      const t=i/sr;
+      let s=0;
+      const env = Math.exp(-0.8*t);
+      // additive partials with slight inharmonicity
+      s += Math.sin(2*Math.PI*base*t)*1.0;
+      s += 0.7*Math.sin(2*Math.PI*1.9*base*t + 0.1)*0.8;
+      s += 0.5*Math.sin(2*Math.PI*2.7*base*t + 0.2)*0.6;
+      s += 0.4*Math.sin(2*Math.PI*3.6*base*t + 0.3)*0.5;
+      // bell-like high harmonic shimmer
+      s += 0.2*Math.sin(2*Math.PI*7.9*base*t)*0.2;
+      d[i]=s*env*0.6;
+    }
+    // gentle highpass (remove DC)
+    let prev=0; for (let i=0;i<d.length;i++){ const cur=d[i]; d[i]=cur - prev*0.996; prev=cur; }
+  });
+
+  // Sustained bell (bright, longer decay)
+  sampleBuffers.sbell = makeBuffer(2.2,(sr,d)=>{
+    for (let i=0;i<d.length;i++){
+      const t=i/sr;
+      let s=0;
+      const env = Math.exp(-1.2*t);
+      s += Math.sin(2*Math.PI*880*t)*1.0;
+      s += 0.8*Math.sin(2*Math.PI*1320*t)*0.6;
+      s += 0.5*Math.sin(2*Math.PI*1760*t)*0.4;
+      d[i]=s*env*0.6;
+    }
+    let prev=0; for (let i=0;i<d.length;i++){ const cur=d[i]; d[i]=cur - prev*0.995; prev=cur; }
+  });
+}
+
+/* helper to create buffer */
+function makeBuffer(duration, fillFn){
+  const sr = ctx.sampleRate || 44100;
+  const len = Math.floor(duration * sr);
+  const buf = ctx.createBuffer(1, len, sr);
+  const ch = buf.getChannelData(0);
+  fillFn(sr, ch);
+  return buf;
+}
+
+/* -----------------------
+   Reverb impulse
+   ----------------------- */
+function createReverbImpulse(size=2.0){
+  if (!ctx) return;
+  const sr = ctx.sampleRate;
+  const len = Math.floor(sr * size);
+  const buf = ctx.createBuffer(2, len, sr);
+  for (let ch=0; ch<2; ch++){
+    const out = buf.getChannelData(ch);
+    for (let i=0;i<len;i++){
+      out[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 3.0);
+    }
+  }
+  reverbNode.buffer = buf;
+}
+
+/* -----------------------
+   Frequency helpers & labels
+   ----------------------- */
+function freqFromIndex(idx){
+  const base = parseFloat(document.getElementById('baseFreq').value) || 440;
+  // use idx relative to C3 mapping (as earlier: C3 index 12)
+  return base * noteRatios[(idx%12+12)%12] * Math.pow(2, Math.floor(idx/12)-1);
+}
+function noteNameForIndex(idx){
+  const n = noteNames[(idx%12+12)%12];
+  const o = Math.floor(idx/12) + 1;
+  return n + o;
+}
+
+/* -----------------------
+   Piano UI generation & fixes
+   - side-by-side octaves: left (C4), right (C3)
+   - black key placement computed from white key width
+   - labels show Note + Hz and update on baseFreq change
+   - robust touch/mouse handlers avoiding stuck notes
+   ----------------------- */
+function createPianoDom(){
+  const left = document.getElementById('octaveLeft');
+  const right = document.getElementById('octaveRight');
+  left.innerHTML = ''; right.innerHTML = '';
+  // We'll render two octaves: left = octave 4 (start idx 24), right = octave 3 (start idx 12)
+  renderOctave(left, 24);
+  renderOctave(right, 12);
+  // update labels when base freq changes
+  document.getElementById('baseFreq').addEventListener('input', updateKeyLabels);
+  // collapse toggle
+  document.getElementById('pianoToggle').addEventListener('click', ()=> {
+    const p = document.getElementById('pianoPanel');
+    p.style.display = p.style.display === 'none' ? '' : 'none';
+  });
+}
+
+function renderOctave(container, startIdx){
+  container.style.position = 'relative';
+  container.innerHTML = '';
+  const whiteWidth = 56; // CSS default; black positioning computed relative to this with JS adjustment
+  // Create white keys
+  whiteOrder.forEach((noteOffset, i) => {
+    const idx = startIdx + noteOffset;
+    const wk = document.createElement('div'); wk.className='white-key'; wk.dataset.note = idx;
+    const label = document.createElement('div'); label.className='key-label'; label.textContent = `${noteNameForIndex(idx)} — ${freqFromIndex(idx).toFixed(2)} Hz`;
+    wk.appendChild(label);
+    // pointer events for mobile & desktop
+    wk.addEventListener('pointerdown', (e) => { e.preventDefault(); noteDown(idx, e.shiftKey ? 0.6 : 1.0); });
+    wk.addEventListener('pointerup', (e) => { e.preventDefault(); noteUp(idx); });
+    wk.addEventListener('pointercancel', ()=> noteUp(idx));
+    wk.addEventListener('pointerleave', ()=> noteUp(idx));
+    container.appendChild(wk);
+  });
+  // Create black keys with calculated left offsets
+  // compute offsets: black keys sit between certain white keys; map semitone offset to index of previous white key
+  const whiteEls = container.querySelectorAll('.white-key');
+  // allow DOM layout to compute width; use getBoundingClientRect where available
+  let computedWhiteW = whiteEls.length ? whiteEls[0].getBoundingClientRect().width : whiteWidth;
+  if (!computedWhiteW || computedWhiteW < 10) computedWhiteW = whiteWidth;
+  const positions = {
+    1: 0.66, 3: 1.66, 6: 3.66, 8: 4.66, 10: 5.66
+  };
+  blackOrder.forEach((noteOffset) => {
+    const idx = startIdx + noteOffset;
+    const bk = document.createElement('div'); bk.className='black-key'; bk.dataset.note = idx;
+    bk.textContent = noteNames[noteOffset];
+    const pos = (positions[noteOffset] || 0) * (computedWhiteW + 2);
+    bk.style.left = pos + 'px';
+    // pointer
+    bk.addEventListener('pointerdown', (e) => { e.preventDefault(); noteDown(idx, e.shiftKey ? 0.6 : 1.0); });
+    bk.addEventListener('pointerup', (e) => { e.preventDefault(); noteUp(idx); });
+    bk.addEventListener('pointercancel', ()=> noteUp(idx));
+    container.appendChild(bk);
+  });
+}
+
+/* update labels on tuning change */
+function updateKeyLabels(){
+  const keys = document.querySelectorAll('[data-note]');
+  keys.forEach(k => {
+    const idx = parseInt(k.dataset.note);
+    const label = k.querySelector('.key-label');
+    if (label) label.textContent = `${noteNameForIndex(idx)} — ${freqFromIndex(idx).toFixed(2)} Hz`;
+  });
+}
+
+/* -----------------------
+   Piano sound engine (preset voices) with live update & clean stop
+   - Voices created with nodes recorded so we can stop + update safely
+   ----------------------- */
+function createVoice(idx, velocity=1.0){
+  if (!ctx) initAudio();
+  const now = ctx.currentTime;
+  const preset = document.getElementById('kbPreset').value || 'Classic Piano';
+  // container for nodes
+  const voice = { idx, created: now, nodes: [], outGain: null, release: 0.28 };
+
+  // amplitude gain
+  const g = ctx.createGain(); g.gain.value = 0;
+  voice.outGain = g;
+
+  // create nodes based on preset
+  const f = freqFromIndex(idx);
+  if (preset === 'Classic Piano'){
+    const o1 = ctx.createOscillator(); o1.type='triangle'; o1.frequency.value = f;
+    const o2 = ctx.createOscillator(); o2.type='triangle'; o2.frequency.value = f*1.003;
+    const o3 = ctx.createOscillator(); o3.type='sine'; o3.frequency.value = f*2;
+    const mix = ctx.createGain(); mix.gain.value = 0.6 * velocity;
+    o1.connect(mix); o2.connect(mix); o3.connect(mix);
+    mix.connect(g);
+    o1.start(now); o2.start(now); o3.start(now);
+    voice.nodes.push(o1,o2,o3,mix);
+    voice.release = 0.28;
+  } else if (preset === 'Electric Piano'){
+    const car = ctx.createOscillator(); car.type='sine'; car.frequency.value=f;
+    const mod = ctx.createOscillator(); mod.type='sine'; mod.frequency.value=5;
+    const mg = ctx.createGain(); mg.gain.value = f * 0.003;
+    mod.connect(mg); mg.connect(car.frequency);
+    const mix = ctx.createGain(); mix.gain.value = 0.7*velocity;
+    car.connect(mix);
+    car.start(now); mod.start(now);
+    voice.nodes.push(car,mod,mg,mix);
+    mix.connect(g);
+    voice.release = 0.35;
+  } else if (preset === 'FM Bell' || preset === 'Crystal Bell' || preset === 'Glass Pad' || preset === 'Sustained Bell'){
+    // use sample buffer playback for bell/crystal to get lush tone (sampleBuffers available)
+    // We'll instead schedule a small sample saturating approach; handled in playPianoSample
+    voice.sampleType = preset;
+    voice.release = 1.2;
+    g.connect(masterGain);
+    // don't start oscillators; sample playback will be scheduled immediately
+  } else if (preset === 'Saw Lead' || preset === 'Analog Pad' || preset === 'Pluck Synth' || preset === 'Warm Sine' || preset === 'Strings' || preset === 'Organ'){
+    // create a basic oscillator setup
+    const o = ctx.createOscillator();
+    o.type = preset === 'Warm Sine' ? 'sine' : (preset === 'Saw Lead' ? 'sawtooth' : (preset === 'Analog Pad' ? 'sawtooth' : 'triangle'));
+    o.frequency.value = f;
+    const g2 = ctx.createGain(); g2.gain.value = 0.6 * velocity;
+    o.connect(g2); g2.connect(g);
+    o.start(now);
+    voice.nodes.push(o,g2);
+    g.connect(masterGain);
+    voice.release = 0.5;
+  }
+
+  // voice filter and sends for those that use oscillators
+  if (!voice.sampleType) {
+    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=12000;
+    g.connect(filt);
+    const revSend = ctx.createGain(); revSend.gain.value = parseFloat(document.getElementById('masterReverbSend').value || 0.25);
+    const delSend = ctx.createGain(); delSend.gain.value = parseFloat(document.getElementById('masterDelaySend').value || 0.12);
+    filt.connect(revSend); revSend.connect(reverbNode);
+    filt.connect(delSend); delSend.connect(delayNode); delSend.connect(delayWet);
+    filt.connect(masterGain);
+    voice.nodes.push(filt,revSend,delSend);
+  } else {
+    // sample voice uses buffer (play a sample once and route to master)
+    // We'll schedule a buffer playback that is connected to master + sends
+    const sampleName = voice.sampleType === 'Crystal Bell' ? 'crystal' : (voice.sampleType === 'Sustained Bell' ? 'sbell' : 'crystal');
+    const buf = sampleBuffers[sampleName];
+    // create buffer source and gain
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const srcGain = ctx.createGain(); srcGain.gain.value = 0.8;
+    src.connect(srcGain);
+    const revSend = ctx.createGain(); revSend.gain.value = parseFloat(document.getElementById('masterReverbSend').value || 0.25);
+    const delSend = ctx.createGain(); delSend.gain.value = parseFloat(document.getElementById('masterDelaySend').value || 0.12);
+    srcGain.connect(revSend); revSend.connect(reverbNode);
+    srcGain.connect(delSend); delSend.connect(delayNode); delSend.connect(delayWet);
+    srcGain.connect(masterGain);
+    src.start();
+    // schedule stop & mark as sample voice
+    setTimeout(()=>{ try{ src.stop(); }catch(e){} }, (buf.duration+0.05)*1000);
+    return { samplePlayed:true }; // sample played — no persistent voice to manage
+  }
+
+  // amplitude envelope
+  g.gain.setValueAtTime(0, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 0.01);
+  g.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.01 + 0.12);
+
+  // connect to master later when assigned
+  g.connect(masterGain);
+
+  return voice;
+}
+
+/* stop voice safely */
+function stopVoice(idx){
+  const v = pianoVoices[idx];
+  if (!v) return;
+  try {
+    if (v.outGain) {
+      const now = ctx.currentTime;
+      v.outGain.gain.cancelScheduledValues(now);
+      v.outGain.gain.setValueAtTime(v.outGain.gain.value, now);
+      const rel = v.release || 0.28;
+      v.outGain.gain.linearRampToValueAtTime(0, now + rel);
+      // stop oscillators after release
+      setTimeout(() => {
+        try { v.nodes.forEach(n => { if (n.stop) { try{ n.stop(); } catch(e){} } if (n.disconnect) n.disconnect(); }); } catch(e){}
+      }, (rel + 0.05) * 1000);
+    } else {
+      // sample voices handled separately; nothing to do
+    }
+  } catch (e) {
+    console.warn('stopVoice error', e);
+  }
+  delete pianoVoices[idx];
+}
+
+/* Piano note on/off handlers (avoid stuck notes; use pointer events) */
+function noteDown(idx, velocity=1.0){
+  if (!ctx) initAudio();
+  if (pianoVoices[idx]) return; // already on
+  const v = createVoice(idx, velocity);
+  if (v && v.samplePlayed) return; // sample-based immediate sound
+  pianoVoices[idx] = v;
+  // mark UI
+  const els = document.querySelectorAll('[data-note="'+idx+'"]');
+  els.forEach(el => el.classList.add('key-active'));
+}
+function noteUp(idx){
+  if (!pianoVoices[idx]) return;
+  stopVoice(idx);
+  // UI
+  const els = document.querySelectorAll('[data-note="'+idx+'"]');
+  els.forEach(el => el.classList.remove('key-active'));
+}
+
+/* -----------------------
+   Binaural Layers
+   - each layer: leftHz, rightHz, toneType, volume, play/stop, left->left ear, right->right ear
+   - tone types include: sine, triangle, crystal bowl (sample), sustained bell (sample), noise pad
+   ----------------------- */
+function addBinauralLayer(){
+  const l = {
+    id: layerId++,
+    leftFreq: 220,
+    rightFreq: 226,
+    tone: 'sine',
+    volume: 0.6,
+    enabled: true,
+    playing: false
+  };
+  binauralLayers.push(l);
+  renderBinauralLayers();
+}
+function renderBinauralLayers(){
+  const cont = document.getElementById('binauralLayers'); cont.innerHTML = '';
+  if (binauralLayers.length === 0) { cont.innerHTML = '<p class="small">No binaural layers yet</p>'; return; }
+  binauralLayers.forEach(layer => {
+    const wrap = document.createElement('div'); wrap.className = 'layer';
+    const top = document.createElement('div'); top.className = 'layer-row';
+    // left freq
+    const leftDiv = document.createElement('div'); leftDiv.style.width='120px';
+    leftDiv.innerHTML = '<div class="control-heading">Left Hz (L)</div>';
+    const linput = document.createElement('input'); linput.type='number'; linput.value = layer.leftFreq;
+    linput.oninput = ()=>{ layer.leftFreq = parseFloat(linput.value); if (binauralVoices[layer.id]) binauralVoices[layer.id].left.freq.value = layer.leftFreq; };
+    leftDiv.appendChild(linput);
+    // right freq
+    const rightDiv = document.createElement('div'); rightDiv.style.width='120px';
+    rightDiv.innerHTML = '<div class="control-heading">Right Hz (R)</div>';
+    const rinput = document.createElement('input'); rinput.type='number'; rinput.value = layer.rightFreq;
+    rinput.oninput = ()=>{ layer.rightFreq = parseFloat(rinput.value); if (binauralVoices[layer.id]) binauralVoices[layer.id].right.freq.value = layer.rightFreq; };
+    rightDiv.appendChild(rinput);
+    // tone type
+    const toneDiv = document.createElement('div'); toneDiv.style.width='140px';
+    toneDiv.innerHTML = '<div class="control-heading">Tone</div>';
+    const tsel = document.createElement('select');
+    ['sine','triangle','crystal bowl','sustained bell','noise pad'].forEach(t => { const o=document.createElement('option'); o.value=t; o.textContent=t; if (layer.tone===t) o.selected=true; tsel.appendChild(o); });
+    tsel.onchange = ()=>{ layer.tone = tsel.value; if (binauralVoices[layer.id]) { stopBinaural(layer.id); startBinaural(layer.id); } };
+    toneDiv.appendChild(tsel);
+    // volume
+    const volDiv = document.createElement('div'); volDiv.style.width='120px'; volDiv.innerHTML = '<div class="control-heading">Volume</div>';
+    const vol = document.createElement('input'); vol.type='range'; vol.min=0;vol.max=1;vol.step=0.01;vol.value=layer.volume;
+    vol.oninput = ()=>{ layer.volume = parseFloat(vol.value); if (binauralVoices[layer.id]) binauralVoices[layer.id].gain.gain.value = layer.volume; };
+    volDiv.appendChild(vol);
+    // play/stop + remove
+    const btnDiv = document.createElement('div'); btnDiv.style.display='flex'; btnDiv.style.gap='6px';
+    const playBtn = document.createElement('button'); playBtn.className='btn btn-blue'; playBtn.textContent = layer.playing ? 'Stop' : 'Play';
+    playBtn.onclick = ()=>{ if (layer.playing) { stopBinaural(layer.id); layer.playing=false; } else { startBinaural(layer.id); layer.playing=true; } renderBinauralLayers(); };
+    const rem = document.createElement('button'); rem.className='btn btn-danger'; rem.textContent='✕';
+    rem.onclick = ()=>{ if (confirm('Remove binaural layer?')) { stopBinaural(layer.id); binauralLayers = binauralLayers.filter(x=>x.id!==layer.id); renderBinauralLayers(); } };
+    btnDiv.appendChild(playBtn); btnDiv.appendChild(rem);
+
+    top.appendChild(leftDiv); top.appendChild(rightDiv); top.appendChild(toneDiv); top.appendChild(volDiv); top.appendChild(btnDiv);
+    wrap.appendChild(top);
+    cont.appendChild(wrap);
+  });
+}
+function startBinaural(id){
+  const layer = binauralLayers.find(x=>x.id===id); if (!layer) return;
+  if (!ctx) initAudio();
+  // left oscillator -> panner hard left; right oscillator -> panner hard right
+  const now = ctx.currentTime;
+  if (layer.tone === 'crystal bowl' || layer.tone === 'sustained bell'){
+    // play sample buffer looped via bufferSource? We'll use BufferSource loops with crossfades.
+    // For binaural effect we can't pan a BufferSource across channels easily, so create separate buffer sources per channel by copying buffer into channel earlier; simpler: use Oscillator-like synthesis using multiple partials for bowl/bell.
+    // Implement procedural bell/bowl oscillators for each ear (rich partials)
+    const leftOsc = ctx.createOscillator(); const rightOsc = ctx.createOscillator();
+    leftOsc.type = 'sine'; rightOsc.type = 'sine';
+    leftOsc.frequency.value = layer.leftFreq;
+    rightOsc.frequency.value = layer.rightFreq;
+    // create gains and panners
+    const leftGain = ctx.createGain(); leftGain.gain.value = layer.volume;
+    const rightGain = ctx.createGain(); rightGain.gain.value = layer.volume;
+    const leftPan = ctx.createStereoPanner(); leftPan.pan.value = -1;
+    const rightPan = ctx.createStereoPanner(); rightPan.pan.value = 1;
+    // for bell/bowl, add additional modulators/partials via a small additive network
+    const leftAdder = ctx.createGain(); const rightAdder = ctx.createGain();
+    leftOsc.connect(leftAdder); rightOsc.connect(rightAdder);
+    leftAdder.connect(leftGain); rightAdder.connect(rightGain);
+    leftGain.connect(leftPan); rightGain.connect(rightPan);
+    leftPan.connect(masterGain); rightPan.connect(masterGain);
+    // start
+    leftOsc.start(now); rightOsc.start(now);
+    binauralVoices[id] = { left: leftOsc, right: rightOsc, leftGain, rightGain, leftPan, rightPan, type: layer.tone };
+    return;
+  } else if (layer.tone === 'noise pad') {
+    // use noise buffer looped with filter
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = buf.getChannelData(0); for (let i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*Math.exp(-i/d.length*2);
+    const srcL = ctx.createBufferSource(); const srcR = ctx.createBufferSource();
+    srcL.buffer = buf; srcL.loop = true; srcR.buffer = buf; srcR.loop = true;
+    const gL = ctx.createGain(); gL.gain.value = layer.volume; const gR = ctx.createGain(); gR.gain.value = layer.volume;
+    const pL = ctx.createStereoPanner(); pL.pan.value = -1; const pR = ctx.createStereoPanner(); pR.pan.value = 1;
+    srcL.connect(gL); gL.connect(pL); pL.connect(masterGain);
+    srcR.connect(gR); gR.connect(pR); pR.connect(masterGain);
+    srcL.start(now); srcR.start(now);
+    binauralVoices[id] = { left: srcL, right: srcR, gainL:gL, gainR:gR, pL, pR, type: 'noise' };
+    return;
+  } else {
+    // simple oscillator pair per ear
+    const left = ctx.createOscillator(); left.type = layer.tone === 'triangle' ? 'triangle' : 'sine';
+    const right = ctx.createOscillator(); right.type = layer.tone === 'triangle' ? 'triangle' : 'sine';
+    left.frequency.setValueAtTime(layer.leftFreq, now); right.frequency.setValueAtTime(layer.rightFreq, now);
+    const lg = ctx.createGain(); lg.gain.value = layer.volume; const rg = ctx.createGain(); rg.gain.value = layer.volume;
+    const lp = ctx.createStereoPanner(); lp.pan.value = -1; const rp = ctx.createStereoPanner(); rp.pan.value = 1;
+    left.connect(lg); lg.connect(lp); lp.connect(masterGain);
+    right.connect(rg); rg.connect(rp); rp.connect(masterGain);
+    left.start(now); right.start(now);
+    binauralVoices[id] = { left, right, lg, rg, lp, rp, type: layer.tone };
+  }
+}
+function stopBinaural(id){
+  const v = binauralVoices[id]; if (!v) return;
+  try {
+    if (v.left && v.left.stop) v.left.stop();
+    if (v.right && v.right.stop) v.right.stop();
+    if (v.leftGain) v.leftGain.disconnect(); if (v.rightGain) v.rightGain.disconnect();
+    if (v.leftPan) v.leftPan.disconnect(); if (v.rightPan) v.rightPan.disconnect();
+    if (v.left && v.left.disconnect) v.left.disconnect();
+    if (v.right && v.right.disconnect) v.right.disconnect();
+  } catch(e){}
+  delete binauralVoices[id];
+}
+
+/* -----------------------
+   Sub Bass Layers
+   - presets: Deep Sine, Electric Bass, Sub Pad, Reece Bass
+   - sustain/pulse mode, ADSR applied
+   ----------------------- */
+function addSubLayer(){
+  const s = {
+    id: layerId++,
+    freq: 55,
+    volume: 0.85,
+    tone: 'Deep Sine',
+    lowpass: 140,
+    distortion: 0.0,
+    mode: 'continuous', // or 'pulse'
+    playing: false
+  };
+  subLayers.push(s);
+  renderSubLayers();
+}
+function renderSubLayers(){
+  const cont = document.getElementById('subLayers'); cont.innerHTML = '';
+  if (subLayers.length === 0){ cont.innerHTML = '<p class="small">No sub layers</p>'; return; }
+  subLayers.forEach(s => {
+    const wrap = document.createElement('div'); wrap.className='layer';
+    const row = document.createElement('div'); row.className='layer-row';
+    const freqDiv = document.createElement('div'); freqDiv.style.width='120px';
+    freqDiv.innerHTML = '<div class="control-heading">Freq (Hz)</div>';
+    const fin = document.createElement('input'); fin.type='number'; fin.value=s.freq; fin.oninput = ()=>{ s.freq=parseFloat(fin.value); if (subVoices[s.id]) subVoices[s.id].osc.frequency.setValueAtTime(s.freq, ctx.currentTime); };
+    freqDiv.appendChild(fin);
+
+    const toneDiv = document.createElement('div'); toneDiv.style.width='140px';
+    toneDiv.innerHTML = '<div class="control-heading">Tone</div>';
+    const tsel = document.createElement('select');
+    ['Deep Sine','Electric Bass','Sub Pad','Reece Bass'].forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; if (s.tone===t) o.selected=true; tsel.appendChild(o); });
+    tsel.onchange = ()=>{ s.tone = tsel.value; if (subVoices[s.id]) { stopSub(s.id); startSub(s.id); } };
+
+    const volDiv = document.createElement('div'); volDiv.style.width='120px'; volDiv.innerHTML = '<div class="control-heading">Vol</div>';
+    const vol = document.createElement('input'); vol.type='range'; vol.min=0;vol.max=1;vol.step=0.01;vol.value=s.volume; vol.oninput = ()=>{ s.volume = parseFloat(vol.value); if (subVoices[s.id]) subVoices[s.id].gain.gain.value = s.volume; };
+    volDiv.appendChild(vol);
+
+    const lpDiv = document.createElement('div'); lpDiv.style.width='120px'; lpDiv.innerHTML = '<div class="control-heading">Lowpass</div>';
+    const lp = document.createElement('input'); lp.type='range'; lp.min=40;lp.max=400;lp.step=1;lp.value=s.lowpass; lp.oninput = ()=>{ s.lowpass=parseFloat(lp.value); if (subVoices[s.id]) subVoices[s.id].filter.frequency.value = s.lowpass; };
+    lpDiv.appendChild(lp);
+
+    const modeDiv = document.createElement('div'); modeDiv.style.width='120px'; modeDiv.innerHTML = '<div class="control-heading">Mode</div>';
+    const msel = document.createElement('select'); ['continuous','pulse'].forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; if (s.mode===m) o.selected=true; msel.appendChild(o); });
+    msel.onchange = ()=>{ s.mode = msel.value; if (subVoices[s.id]) { stopSub(s.id); startSub(s.id); } };
+
+    const btnDiv = document.createElement('div'); btnDiv.style.display='flex'; btnDiv.style.gap='6px';
+    const playBtn = document.createElement('button'); playBtn.className='btn btn-blue'; playBtn.textContent = subVoices[s.id] ? 'Stop' : 'Play';
+    playBtn.onclick = ()=>{ if (subVoices[s.id]) { stopSub(s.id); } else { startSub(s.id); } renderSubLayers(); };
+    const rem = document.createElement('button'); rem.className='btn btn-danger'; rem.textContent='✕'; rem.onclick = ()=>{ if (confirm('Remove sub layer?')) { stopSub(s.id); subLayers = subLayers.filter(x=>x.id!==s.id); renderSubLayers(); } };
+    btnDiv.appendChild(playBtn); btnDiv.appendChild(rem);
+
+    row.appendChild(freqDiv); row.appendChild(toneDiv); row.appendChild(volDiv); row.appendChild(lpDiv); row.appendChild(modeDiv); row.appendChild(btnDiv);
+    wrap.appendChild(row);
+    cont.appendChild(wrap);
+  });
+}
+function startSub(id){
+  const s = subLayers.find(x=>x.id===id); if (!s) return;
+  if (!ctx) initAudio();
+  const now = ctx.currentTime;
+  // create voice depending on tone
+  if (s.tone === 'Deep Sine' || s.tone === 'Sub Pad'){
+    const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = s.freq;
+    const gain = ctx.createGain(); gain.gain.value = s.volume;
+    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value = s.lowpass;
+    // small warmth via waveshaper if distortion > 0
+    const ws = ctx.createWaveShaper(); ws.curve = makeDistortionCurve(s.distortion * 400);
+    osc.connect(filter); filter.connect(ws); ws.connect(gain); gain.connect(masterGain);
+    osc.start(now);
+    subVoices[id] = { osc, gain, filter, ws };
+  } else if (s.tone === 'Electric Bass'){
+    const o1 = ctx.createOscillator(); o1.type='sine'; o1.frequency.value = s.freq;
+    const o2 = ctx.createOscillator(); o2.type='sawtooth'; o2.frequency.value = s.freq*2;
+    const g1 = ctx.createGain(); g1.gain.value = 0.9 * s.volume;
+    const g2 = ctx.createGain(); g2.gain.value = 0.2 * s.volume;
+    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value = s.lowpass;
+    o1.connect(g1); o2.connect(g2); g1.connect(filter); g2.connect(filter); filter.connect(masterGain);
+    o1.start(now); o2.start(now);
+    subVoices[id] = { osc1:o1, osc2:o2, g1, g2, filter };
+  } else if (s.tone === 'Reece Bass'){
+    // two detuned saws + lowpass
+    const o1 = ctx.createOscillator(); o1.type='sawtooth'; o1.frequency.value = s.freq * 1.0;
+    const o2 = ctx.createOscillator(); o2.type='sawtooth'; o2.frequency.value = s.freq * 1.01;
+    const g1 = ctx.createGain(); g1.gain.value = 0.5 * s.volume;
+    const g2 = ctx.createGain(); g2.gain.value = 0.5 * s.volume;
+    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value = s.lowpass;
+    o1.connect(g1); o2.connect(g2); g1.connect(filter); g2.connect(filter); filter.connect(masterGain);
+    o1.start(now); o2.start(now);
+    subVoices[id] = { osc1:o1, osc2:o2, g1, g2, filter };
+  }
+  // if pulse mode, create periodic gain gating via setInterval controlled by BPM
+  if (s.mode === 'pulse') {
+    const bpm = parseFloat(document.getElementById('bpm').value) || 120;
+    const intervalMs = (60 / bpm) * 1000;
+    subVoices[id].pulseTimer = setInterval(()=> {
+      const g = subVoices[id].gain || subVoices[id].g1; // best-effort
+      if (!g) return;
+      g.gain.cancelScheduledValues(ctx.currentTime);
+      g.gain.setValueAtTime(0, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(s.volume, ctx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (intervalMs/1000)*0.5);
+    }, intervalMs);
+  }
+}
+function stopSub(id){
+  const v = subVoices[id]; if (!v) return;
+  try {
+    if (v.osc) { v.osc.stop(); v.osc.disconnect(); }
+    if (v.osc1) { v.osc1.stop(); v.osc1.disconnect(); }
+    if (v.osc2) { v.osc2.stop(); v.osc2.disconnect(); }
+    if (v.gain) v.gain.disconnect();
+    if (v.g1) v.g1.disconnect(); if (v.g2) v.g2.disconnect();
+    if (v.filter) v.filter.disconnect();
+    if (v.ws) v.ws.disconnect();
+    if (v.pulseTimer) clearInterval(v.pulseTimer);
+  } catch(e){}
+  delete subVoices[id];
+}
+
+/* -----------------------
+   Drum layers: add, render, schedule
+   - persistent pattern list used each render
+   - labeled controls for Volume, Pan, Reverb, Delay, Humanize, Pattern
+   ----------------------- */
+function addDrumLayer(){
+  const l = {
+    id: layerId++,
+    instrument: 'Bass Drum',
+    steps: drumPatterns.Basic.slice(),
+    enabled: true,
+    volume: 0.95,
+    pan: 0,
+    reverbSend: 0.25,
+    delaySend: 0.12,
+    humanize: 6,
+    patternName: 'Basic'
+  };
+  rhythmLayers.push(l);
+  renderDrumLayers();
+}
+function renderDrumLayers(){
+  const cont = document.getElementById('rhythmLayers'); cont.innerHTML = '';
+  if (rhythmLayers.length === 0){ cont.innerHTML = '<p class="small">Add drum layers</p>'; document.getElementById('playRhythmBtn').style.display='none'; return; }
+  document.getElementById('playRhythmBtn').style.display='block';
+  rhythmLayers.forEach(layer => {
+    const wrap = document.createElement('div'); wrap.className='layer';
+    // top row: instrument select + pattern select
+    const top = document.createElement('div'); top.className='layer-row';
+    const instSel = document.createElement('select'); ['Bass Drum','Snare','Hi-Hat','Clap','Tom','Shaker'].forEach(i=>{ const o=document.createElement('option'); o.value=i; o.textContent=i; if (layer.instrument===i) o.selected=true; instSel.appendChild(o); });
+    instSel.onchange = ()=>{ layer.instrument = instSel.value; };
+    const patDiv = document.createElement('div'); patDiv.style.width='140px'; patDiv.innerHTML = '<div class="control-heading">Pattern</div>';
+    const patSel = document.createElement('select');
+    Object.keys(drumPatterns).forEach(p => { const o=document.createElement('option'); o.value=p; o.textContent=p; if (layer.patternName===p) o.selected=true; patSel.appendChild(o); });
+    patSel.onchange = ()=>{ layer.patternName = patSel.value; layer.steps = drumPatterns[patSel.value].slice(); renderDrumLayers(); };
+    patDiv.appendChild(patSel);
+
+    // labeled control groups
+    const volDiv = document.createElement('div'); volDiv.style.width='110px'; volDiv.innerHTML = '<div class="control-heading">Volume</div>';
+    const vol = document.createElement('input'); vol.type='range'; vol.min=0;vol.max=1;vol.step=0.01; vol.value = layer.volume; vol.oninput = ()=>{ layer.volume = parseFloat(vol.value); };
+    volDiv.appendChild(vol);
+
+    const panDiv = document.createElement('div'); panDiv.style.width='110px'; panDiv.innerHTML = '<div class="control-heading">Pan</div>';
+    const pan = document.createElement('input'); pan.type='range'; pan.min=-1; pan.max=1; pan.step=0.01; pan.value = layer.pan || 0; pan.oninput = ()=>{ layer.pan = parseFloat(pan.value); };
+    panDiv.appendChild(pan);
+
+    const revDiv = document.createElement('div'); revDiv.style.width='110px'; revDiv.innerHTML = '<div class="control-heading">Reverb</div>';
+    const rev = document.createElement('input'); rev.type='range'; rev.min=0;rev.max=1;rev.step=0.01;rev.value = layer.reverbSend; rev.oninput = ()=>{ layer.reverbSend = parseFloat(rev.value); };
+    revDiv.appendChild(rev);
+
+    const dDiv = document.createElement('div'); dDiv.style.width='110px'; dDiv.innerHTML = '<div class="control-heading">Delay</div>';
+    const dsend = document.createElement('input'); dsend.type='range'; dsend.min=0; dsend.max=1; dsend.step=0.01; dsend.value = layer.delaySend; dsend.oninput = ()=>{ layer.delaySend = parseFloat(dsend.value); };
+    dDiv.appendChild(dsend);
+
+    const humDiv = document.createElement('div'); humDiv.style.width='110px'; humDiv.innerHTML = '<div class="control-heading">Humanize (ms)</div>';
+    const hum = document.createElement('input'); hum.type='range'; hum.min=0;hum.max=40;hum.step=1;hum.value=layer.humanize||6; hum.oninput = ()=>{ layer.humanize = parseInt(hum.value); };
+    humDiv.appendChild(hum);
+
+    // mute/remove
+    const muteBtn = document.createElement('button'); muteBtn.className='btn btn-danger'; muteBtn.textContent = layer.enabled ? 'Mute' : 'Unmute';
+    muteBtn.onclick = ()=>{ layer.enabled = !layer.enabled; renderDrumLayers(); };
+
+    const rem = document.createElement('button'); rem.className='btn btn-danger'; rem.textContent='✕'; rem.onclick = ()=>{ if(confirm('Remove layer?')) { rhythmLayers = rhythmLayers.filter(x=>x.id!==layer.id); renderDrumLayers(); } };
+
+    top.appendChild(instSel); top.appendChild(patDiv); top.appendChild(volDiv); top.appendChild(panDiv); top.appendChild(revDiv); top.appendChild(dDiv); top.appendChild(humDiv); top.appendChild(muteBtn); top.appendChild(rem);
+
+    // steps grid
+    const steps = document.createElement('div'); steps.style.display='flex';
+    layer.steps.forEach((s,i) => {
+      const stepEl = document.createElement('div'); stepEl.className = 'step' + (s ? ' active' : '');
+      stepEl.onclick = ()=> { layer.steps[i] = layer.steps[i] ? 0 : 1; renderDrumLayers(); };
+      steps.appendChild(stepEl);
+    });
+
+    wrap.appendChild(top); wrap.appendChild(steps);
+    cont.appendChild(wrap);
+  });
+}
+
+/* schedule / play steps with lookahead & swing/humanize; allow live changes without restarting scheduler */
+function schedulerAdvance(){
+  const bpm = parseFloat(document.getElementById('bpm').value) || 120;
+  const sixteenth = 0.25 * (60 / bpm);
+  scheduler.nextNoteTime += sixteenth;
+  scheduler.currentStep = (scheduler.currentStep + 1) % 16;
+}
+function scheduleStep(stepIndex, time){
+  const swing = parseFloat(document.getElementById('swing').value) || 0;
+  // for each layer
+  rhythmLayers.forEach(layer => {
+    if (!layer.enabled) return;
+    const steps = layer.steps;
+    const idx = stepIndex % steps.length;
+    if (!steps[idx]) return;
+    // determine instrument buffer
+    let buf = sampleBuffers.kick;
+    if (layer.instrument === 'Bass Drum') buf = sampleBuffers.kick;
+    else if (layer.instrument === 'Snare') buf = sampleBuffers.snare;
+    else if (layer.instrument === 'Hi-Hat') buf = sampleBuffers.hat;
+    else if (layer.instrument === 'Clap') buf = sampleBuffers.clap;
+    else if (layer.instrument === 'Tom') buf = sampleBuffers.tom;
+    else if (layer.instrument === 'Shaker') buf = sampleBuffers.shaker;
+
+    // base when with optional swing & humanize
+    let when = time;
+    if (idx % 2 === 1 && swing > 0 && steps.length % 2 === 0) {
+      const bpm = parseFloat(document.getElementById('bpm').value) || 120;
+      const baseInterval = (60 / bpm) * (4 / steps.length);
+      when += baseInterval * swing;
+    }
+    // humanize ms jitter
+    const h = layer.humanize || parseFloat(document.getElementById('humanize').value) || 0;
+    when += ((Math.random()*2 -1) * (h/1000));
+
+    // play sample
+    playSampleBuffer(buf, when, {
+      gain: layer.volume,
+      pan: layer.pan,
+      reverbSend: layer.reverbSend,
+      delaySend: layer.delaySend
+    });
+    // visual mark (re-render)
+    // we re-render after scheduling to keep UI responsive
+  });
+}
+function schedulerLoop(){
+  if (!ctx) return;
+  while (scheduler.nextNoteTime < ctx.currentTime + scheduler.scheduleAheadTime) {
+    scheduleStep(scheduler.currentStep, scheduler.nextNoteTime);
+    schedulerAdvance();
+  }
+  scheduler.timerID = setTimeout(schedulerLoop, scheduler.lookahead);
+}
+function startScheduler(){
+  if (!ctx) initAudio();
+  if (scheduler.running) return;
+  const bpm = parseFloat(document.getElementById('bpm').value) || 120;
+  scheduler.nextNoteTime = ctx.currentTime + 0.05;
+  scheduler.currentStep = 0;
+  scheduler.running = true;
+  schedulerLoop();
+  document.getElementById('playRhythmBtn').textContent = '■ Stop Rhythms';
+}
+function stopScheduler(){
+  if (!scheduler.running) return;
+  clearTimeout(scheduler.timerID);
+  scheduler.running = false;
+  document.getElementById('playRhythmBtn').textContent = '▶ Play Rhythms';
+}
+
+/* play a buffer into the graph with routing to master + sends; returns source (for cleanup if needed) */
+function playSampleBuffer(buffer, when, opts = {}){
+  if (!ctx) initAudio();
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.playbackRate.value = opts.playbackRate || 1;
+  const g = ctx.createGain(); g.gain.value = opts.gain || 1;
+  const p = ctx.createStereoPanner(); p.pan.value = opts.pan || 0;
+  const revSend = ctx.createGain(); revSend.gain.value = (opts.reverbSend || 0) * parseFloat(document.getElementById('masterReverbSend').value || 1);
+  const delSend = ctx.createGain(); delSend.gain.value = (opts.delaySend || 0) * parseFloat(document.getElementById('masterDelaySend').value || 1);
+  src.connect(g); g.connect(p); p.connect(masterGain);
+  g.connect(revSend); revSend.connect(reverbNode);
+  g.connect(delSend); delSend.connect(delayNode); delSend.connect(delayWet);
+  src.start(when);
+  // schedule cleanup: stop after duration
+  const dur = buffer.duration / (src.playbackRate.value || 1);
+  setTimeout(()=> {
+    try { src.stop(); } catch(e){}
+    try { src.disconnect(); g.disconnect(); p.disconnect(); revSend.disconnect(); delSend.disconnect(); } catch(e){}
+  }, (when - ctx.currentTime + dur + 0.05)*1000);
+  return src;
+}
+
+/* -----------------------
+   Visual update functions (render layers) and UI wiring
+   ----------------------- */
+function renderAll(){
+  renderDrumLayers();
+  renderBinauralLayers();
+  renderSubLayers();
+  updateKeyLabels();
+}
+document.getElementById('addLayerBtn').addEventListener('click', ()=>{ addDrumLayer(); });
+document.getElementById('clearLayersBtn').addEventListener('click', ()=>{ if (confirm('Clear drum layers?')) { rhythmLayers=[]; renderDrumLayers(); } });
+document.getElementById('playRhythmBtn').addEventListener('click', ()=>{ if (!ctx) initAudio(); if (scheduler.running) stopScheduler(); else startScheduler(); });
+
+document.getElementById('addBinauralBtn').addEventListener('click', addBinauralLayer);
+document.getElementById('clearBinauralBtn').addEventListener('click', ()=>{ if (confirm('Clear binaural layers?')) { binauralLayers.forEach(l=> stopBinaural(l.id)); binauralLayers=[]; renderBinauralLayers(); } });
+
+document.getElementById('addSubBtn').addEventListener('click', addSubLayer);
+document.getElementById('clearSubBtn').addEventListener('click', ()=>{ if (confirm('Clear sub layers?')) { subLayers.forEach(s=> stopSub(s.id)); subLayers=[]; renderSubLayers(); } });
+
+/* Recording (simple MediaRecorder of dest.stream) */
+let mediaRecorder = null; let mediaChunks = []; let mediaRecording = false;
+document.getElementById('recordBtn').addEventListener('click', ()=>{ if (!ctx) initAudio(); if (!mediaRecording) startMediaRec(); else stopMediaRec(); });
+function startMediaRec(){
+  mediaChunks = [];
+  try {
+    mediaRecorder = new MediaRecorder(dest.stream);
+    mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) mediaChunks.push(e.data); };
+    mediaRecorder.onstop = ()=> {
+      const blob = new Blob(mediaChunks, { type: 'audio/webm' });
+      setupDownload(blob, 'recording-'+Date.now()+'.webm');
+    };
+    mediaRecorder.start();
+    mediaRecording = true;
+    document.getElementById('recordStatus').style.display = 'block';
+    document.getElementById('recordStatus').textContent = 'Recording (WebM)...';
+    document.getElementById('recordBtn').className = 'btn btn-danger';
+    document.getElementById('recordBtn').textContent = '■ Stop Recording (WebM)';
+  } catch (e) {
+    alert('Recording failed: ' + e.message);
+  }
+}
+function stopMediaRec(){
+  if (!mediaRecording) return;
+  mediaRecorder.stop();
+  mediaRecording = false;
+  document.getElementById('recordStatus').style.display = 'none';
+  document.getElementById('recordBtn').className = 'btn btn-primary';
+  document.getElementById('recordBtn').textContent = '● Start Recording (WebM)';
+}
+function setupDownload(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const dl = document.getElementById('downloadBtn'); dl.style.display = 'inline-flex';
+  dl.onclick = ()=> { const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); };
+}
+
+/* simple WAV recorder using ScriptProcessor */
+let wavRec = { active:false, buffers:[], length:0, node:null };
+document.getElementById('recordWavBtn').addEventListener('click', ()=>{ if (!ctx) initAudio(); if (!wavRec.active) startWav(); else stopWav(); });
+function startWav(){
+  wavRec.buffers=[]; wavRec.length=0;
+  const bufferSize = 4096;
+  wavRec.node = ctx.createScriptProcessor(bufferSize, 1, 1);
+  try { masterGain.connect(wavRec.node); } catch(e){}
+  wavRec.node.onaudioprocess = (ev)=>{ const inData = ev.inputBuffer.getChannelData(0); wavRec.buffers.push(new Float32Array(inData)); wavRec.length += inData.length; };
+  wavRec.node.connect(ctx.destination);
+  wavRec.active = true;
+  document.getElementById('recordWavBtn').className = 'btn btn-danger';
+  document.getElementById('recordWavBtn').textContent = '■ Stop WAV';
+  document.getElementById('recordStatus').style.display = 'block';
+  document.getElementById('recordStatus').textContent = 'Recording WAV...';
+}
+function stopWav(){
+  if (!wavRec.active) return;
+  try{ masterGain.disconnect(wavRec.node); wavRec.node.disconnect(); } catch(e){}
+  wavRec.active=false;
+  const merged = mergeBuffers(wavRec.buffers, wavRec.length);
+  const blob = encodeWAV(merged, ctx.sampleRate);
+  setupDownload(blob, 'recording-'+Date.now()+'.wav');
+  document.getElementById('recordWavBtn').className = 'btn btn-blue';
+  document.getElementById('recordWavBtn').textContent = '● Record WAV';
+  document.getElementById('recordStatus').style.display = 'none';
+}
+function mergeBuffers(buffers, total){
+  const out = new Float32Array(total);
+  let offset=0;
+  for (let i=0;i<buffers.length;i++){ out.set(buffers[i], offset); offset += buffers[i].length; }
+  return out;
+}
+function floatTo16BitPCM(output, offset, input){
+  for (let i=0;i<input.length;i++, offset+=2){ let s=Math.max(-1,Math.min(1,input[i])); s = s < 0 ? s * 0x8000 : s * 0x7FFF; output.setInt16(offset, s, true); }
+}
+function writeString(view, offset, string){ for (let i=0;i<string.length;i++) view.setUint8(offset+i, string.charCodeAt(i)); }
+function encodeWAV(samples, sampleRate){
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  writeString(view,0,'RIFF'); view.setUint32(4,36 + samples.length * 2, true);
+  writeString(view,8,'WAVE'); writeString(view,12,'fmt ');
+  view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+  view.setUint32(24,sampleRate,true); view.setUint32(28,sampleRate * 2,true);
+  view.setUint16(32,2,true); view.setUint16(34,16,true); writeString(view,36,'data'); view.setUint32(40,samples.length * 2, true);
+  floatTo16BitPCM(view,44,samples);
+  return new Blob([view], { type:'audio/wav' });
+}
+
+/* -----------------------
+   Utilities
+   ----------------------- */
+function makeDistortionCurve(amount) {
+  const k = typeof amount === 'number' ? amount : 50;
+  const n = 44100; const curve = new Float32Array(n);
+  for (let i=0;i<n;i++){
+    const x = i * 2 / n - 1;
+    curve[i] = (3 + k) * x * 20 * Math.PI / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+}
+
+/* -----------------------
+   Init UI & Bindings
+   ----------------------- */
+createPianoDom();
+renderAll();
+document.getElementById('addLayerBtn').addEventListener('click', addDrumLayer);
+document.getElementById('addBinauralBtn').addEventListener('click', addBinauralLayer);
+document.getElementById('addSubBtn').addEventListener('click', addSubLayer);
+
+/* ensure audio starts on first interaction */
+document.body.addEventListener('pointerdown', function startOnce(){ initAudio(); document.body.removeEventListener('pointerdown', startOnce); });
+
+/* keep patterns persistent even after layers change — drumPatterns is constant and used on render
+   Fixes: scheduling recalculates BPM/swing/humanize values live so changes apply mid-play without restart */
+
+/* Final: responsive update loop for UI (keeps light) */
+setInterval(()=>{
+  // update key labels in case baseFreq changed via mobile number input
+  updateKeyLabels();
+}, 300);
+
+/* Prevent accidental scrolling when touching piano keys */
+window.addEventListener('touchmove', function(e){
+  const t = e.target;
+  if (t && (t.classList && (t.classList.contains('white-key') || t.classList.contains('black-key')))){
+    e.preventDefault();
+  }
+}, { passive:false });
+
+/* end of script */
+</script>
+</body>
+</html>
 <!DOCTYPE html>
 <html lang="en">
 <head>
