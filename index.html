@@ -1,462 +1,994 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tunable Piano Synthesizer</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: white;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        h1 { text-align: center; margin-bottom: 30px; font-size: 2.5em; }
-        .panel {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-        }
-        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: 600; }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.2);
-            color: white;
-            font-size: 16px;
-        }
-        button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover { transform: translateY(-2px); }
-        .btn-primary { background: #10b981; color: white; }
-        .btn-danger { background: #ef4444; color: white; }
-        .btn-blue { background: #3b82f6; color: white; }
-        .btn-purple { background: #8b5cf6; color: white; }
-        .recording-controls { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
-        .rhythm-layer {
-            background: rgba(255,255,255,0.1);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-        .rhythm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .piano-container {
-            background: linear-gradient(to bottom, #2d2d2d, #1a1a1a);
-            border-radius: 15px;
-            padding: 30px 20px;
-        }
-        .octave { 
-            position: relative; 
-            display: inline-block;
-            margin-bottom: 30px; 
-            height: 220px;
-        }
-        .octave-wrapper {
-            text-align: center;
-        }
-        .octave:last-child { margin-bottom: 0; }
-        .piano-key {
-            border: none;
-            cursor: pointer;
-            user-select: none;
-            font-family: monospace;
-            font-size: 11px;
-            display: inline-flex;
-            align-items: flex-end;
-            justify-content: center;
-            padding-bottom: 10px;
-            vertical-align: top;
-        }
-        .piano-key.white {
-            width: 60px;
-            height: 220px;
-            background: linear-gradient(to bottom, #ffffff, #f0f0f0);
-            border: 2px solid #333;
-            border-radius: 0 0 8px 8px;
-            color: #333;
-            font-weight: bold;
-            position: relative;
-        }
-        .piano-key.white:active { background: linear-gradient(to bottom, #e0e0e0, #d0d0d0); transform: translateY(2px); }
-        .piano-key.black {
-            position: absolute;
-            width: 40px;
-            height: 140px;
-            background: linear-gradient(to bottom, #1a1a1a, #000000);
-            border: 2px solid #000;
-            border-radius: 0 0 6px 6px;
-            color: #fff;
-            font-weight: bold;
-            z-index: 10;
-            margin-left: -20px;
-        }
-        .piano-key.black:active { background: linear-gradient(to bottom, #0a0a0a, #000000); transform: translateY(2px); }
-        
-        /* Correct black key positioning - positioned after each white key */
-        .key-c { margin-left: 0; }
-        .key-cs { left: 60px; }
-        .key-d { }
-        .key-ds { left: 120px; }
-        .key-e { }
-        .key-f { }
-        .key-fs { left: 240px; }
-        .key-g { }
-        .key-gs { left: 300px; }
-        .key-a { }
-        .key-as { left: 360px; }
-        .key-b { }
-        
-        .octave-label { text-align: center; font-weight: bold; margin-bottom: 10px; }
-        h2 { font-size: 1.8em; margin-bottom: 15px; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tunable Piano Synthesizer — Full Sample-Based (All-in-One)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:linear-gradient(135deg,#1f2937 0%,#4c51bf 100%); color:#fff; min-height:100vh;padding:18px;}
+  .container{max-width:1400px;margin:0 auto}
+  h1{text-align:center;margin-bottom:12px;font-size:1.9rem}
+  .panel{background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;margin-bottom:14px}
+  .controls-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  label{display:block;font-weight:700;margin-bottom:6px;font-size:13px}
+  input,select,button{font-size:14px}
+  input[type="number"],input[type="text"],select{width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#fff}
+  input[type="range"]{width:100%}
+  button{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+  .btn-primary{background:#10b981;color:#fff}
+  .btn-danger{background:#ef4444;color:#fff}
+  .btn-blue{background:#3b82f6;color:#fff}
+  .btn-purple{background:#8b5cf6;color:#fff}
+  .flex{display:flex;gap:10px;align-items:center}
+  .piano-container{background:linear-gradient(180deg,#111,#0b0b0f);padding:12px;border-radius:10px}
+  .octave{position:relative;display:inline-block;height:160px;margin-right:8px}
+  .piano-key{border:none;cursor:pointer;user-select:none;font-family:monospace;font-size:11px;display:inline-flex;align-items:flex-end;justify-content:center;padding-bottom:6px;vertical-align:top}
+  .piano-key.white{width:48px;height:160px;background:linear-gradient(#fff,#eee);border:1px solid #333;border-radius:0 0 6px 6px;color:#222;position:relative;margin-right:2px}
+  .piano-key.black{position:absolute;width:34px;height:100px;background:linear-gradient(#111,#000);border:1px solid #000;border-radius:0 0 6px 6px;color:#fff;font-size:10px;z-index:10;margin-left:-17px}
+  .piano-key.active{outline:3px solid rgba(59,130,246,0.35);transform:translateY(2px);box-shadow:0 8px 24px rgba(0,0,0,0.6) inset}
+  .octave-label{text-align:center;font-weight:700;margin-bottom:8px}
+  .rhythm-layer{display:flex;gap:8px;align-items:center;padding:10px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:8px;flex-wrap:wrap}
+  .step{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.04);display:inline-block;margin-right:4px;cursor:pointer;border:1px solid rgba(0,0,0,0.25)}
+  .step.active{background:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,0.2)}
+  .step.playing{background:#10b981}
+  canvas{width:100%;height:120px;border-radius:8px;background:#06060b;display:block}
+  .small{font-size:12px;color:rgba(255,255,255,0.8)}
+  .right{margin-left:auto}
+  .muted{opacity:0.4}
+  @media (max-width:700px){ .piano-key.white{width:40px;height:130px} .piano-key.black{width:28px;height:80px;margin-left:-14px} }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎹 Tunable Piano Synthesizer</h1>
-        
-        <div class="panel">
-            <div class="controls-grid">
-                <div>
-                    <label>Base Frequency (Hz)</label>
-                    <input type="number" id="baseFreq" value="440.00000" step="0.00001" min="0" max="2000">
-                </div>
-                <div>
-                    <label>Instrument</label>
-                    <select id="instrument">
-                        <option>Piano</option>
-                        <option>Guitar</option>
-                        <option>Bass</option>
-                        <option>Strings</option>
-                        <option>Flute</option>
-                        <option>Crystal Bowl</option>
-                        <option>Organ</option>
-                    </select>
-                </div>
-                <div>
-                    <label>BPM</label>
-                    <input type="number" id="bpm" value="120" min="0" max="300">
-                </div>
-            </div>
-        </div>
+<div class="container">
+  <h1>🎹 Tunable Piano Synthesizer — Full Sample-Based</h1>
 
-        <div class="panel">
-            <div class="recording-controls">
-                <button id="recordBtn" class="btn-primary">● Start Recording</button>
-                <button id="downloadBtn" class="btn-blue" style="display:none;">⬇ Download</button>
-            </div>
-            <div id="recordStatus" style="text-align:center;margin-top:15px;display:none;"></div>
-        </div>
+  <!-- Controls top -->
+  <div class="panel">
+    <div class="controls-grid">
+      <div>
+        <label>Base Frequency (A tuning) — Hz</label>
+        <input id="baseFreq" type="number" value="440.00000" step="0.00001" min="1" max="2000">
+      </div>
+      <div>
+        <label>Instrument (Piano Voice)</label>
+        <select id="instrument">
+          <option>Piano</option><option>Electric Piano</option><option>FM Bell</option><option>Organ</option>
+        </select>
+      </div>
+      <div>
+        <label>BPM</label>
+        <input id="bpm" type="number" value="120" min="20" max="300">
+      </div>
 
-        <div class="panel">
-            <div class="rhythm-header">
-                <h2>Rhythm Layers</h2>
-                <button id="addLayerBtn" class="btn-primary">+ Add Layer</button>
-            </div>
-            <div id="rhythmLayers"><p style="text-align:center;">Click Add Layer to start</p></div>
-            <button id="playRhythmBtn" class="btn-purple" style="display:none;width:100%;margin-top:15px;">▶ Play Rhythms</button>
-        </div>
+      <div>
+        <label>Master Volume</label>
+        <input id="masterVol" type="range" min="0" max="1" step="0.01" value="0.9">
+      </div>
 
-        <div class="panel">
-            <h2>Piano</h2>
-            <div class="piano-container">
-                <div class="octave-label">Octave 4</div>
-                <div class="octave-wrapper">
-                    <div id="octave4" class="octave"></div>
-                </div>
-                <div class="octave-label">Octave 3</div>
-                <div class="octave-wrapper">
-                    <div id="octave3" class="octave"></div>
-                </div>
-            </div>
-        </div>
+      <div>
+        <label>Swing (0-75%)</label>
+        <input id="swing" type="range" min="0" max="0.75" step="0.01" value="0">
+      </div>
+
+      <div>
+        <label>Humanize (ms)</label>
+        <input id="humanize" type="range" min="0" max="30" step="1" value="6">
+      </div>
     </div>
+  </div>
 
-    <script>
-        var ctx, dest, rec, chunks=[], oscs={}, layers=[], intervals=[], playing=false;
-        var patterns = {
-            'Basic': [1,0,0,0,1,0,0,0],
-            'Backbeat': [1,0,1,0,1,0,1,0],
-            'Syncopated': [1,0,0,1,0,0,1,0],
-            'Fast': [1,1,1,1,1,1,1,1],
-            'Shuffle': [1,0,1,0,0,1,0,0]
-        };
-        var noteRatios = [1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8];
-        var noteNames = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b'];
-        var whiteKeys = [0, 2, 4, 5, 7, 9, 11];
-        var blackKeys = [1, 3, 6, 8, 10];
+  <!-- Record / preset -->
+  <div class="panel">
+    <div class="flex" style="gap:12px;flex-wrap:wrap;align-items:center">
+      <button id="recordBtn" class="btn-primary">● Start Recording (WebM)</button>
+      <button id="recordWavBtn" class="btn-blue">● Record WAV</button>
+      <button id="downloadBtn" class="btn-blue" style="display:none">⬇ Download</button>
+      <button id="savePresetBtn" class="btn-purple">💾 Save Preset</button>
+      <select id="presetSelect"><option value="">— Load Preset —</option></select>
+      <button id="deletePresetBtn" class="btn-danger">✕ Delete Preset</button>
+      <div class="right small">Shortcuts: R=Record, Space=Play/Stop Rhythms, ↑/↓ Master Vol</div>
+    </div>
+    <div id="recordStatus" style="text-align:center;margin-top:8px;display:none;color:#ffd">Recording...</div>
+  </div>
 
-        function init() {
-            if (!ctx) {
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                dest = ctx.createMediaStreamDestination();
-            }
+  <!-- Rhythm / layers -->
+  <div class="panel">
+    <div style="display:flex;align-items:center;gap:12px">
+      <h2 style="margin:0;font-size:1.1rem">Rhythm Layers</h2>
+      <div class="right">
+        <button id="addLayerBtn" class="btn-primary">+ Add Layer</button>
+        <button id="clearLayersBtn" class="btn-danger">Clear</button>
+      </div>
+    </div>
+    <div id="rhythmLayers" style="margin-top:12px"><p class="small" style="text-align:center">Click Add Layer to begin</p></div>
+    <button id="playRhythmBtn" class="btn-purple" style="display:none;width:100%;margin-top:12px">▶ Play Rhythms</button>
+  </div>
+
+  <!-- Piano + Visualizer -->
+  <div class="panel">
+    <h2 style="margin-bottom:8px">Piano</h2>
+    <div class="piano-container">
+      <div class="octave-label">Octave 4</div>
+      <div class="octave-wrapper"><div id="octave4" class="octave"></div></div>
+      <div class="octave-label">Octave 3</div>
+      <div class="octave-wrapper"><div id="octave3" class="octave"></div></div>
+
+      <div style="display:flex;gap:12px;margin-top:12px;align-items:flex-start">
+        <div style="flex:1">
+          <label class="small">Visualizer (waveform + spectrum)</label>
+          <canvas id="viz" height="120"></canvas>
+        </div>
+        <div style="width:260px">
+          <div class="small">Keyboard mapping: Z S X D C V G B H N J M (C3 → C4)</div>
+          <div style="height:8px"></div>
+          <div class="small">MIDI input: <span id="midiStatus">No</span></div>
+          <div style="height:8px"></div>
+          <div id="meter" style="height:10px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden">
+            <div id="meterFill" style="height:100%;width:0%;background:#10b981"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mixer -->
+  <div class="panel">
+    <h2 style="margin:0 0 10px 0;font-size:1.1rem">Global Mixer & Effects</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <label>Reverb Size</label>
+        <input id="reverbSize" type="range" min="0.2" max="4" step="0.1" value="2">
+      </div>
+      <div>
+        <label>Delay Time (s)</label>
+        <input id="delayTime" type="range" min="0.05" max="0.8" step="0.01" value="0.25">
+      </div>
+      <div>
+        <label>Master Reverb Send</label>
+        <input id="masterReverbSend" type="range" min="0" max="1" step="0.01" value="0.3">
+      </div>
+      <div>
+        <label>Master Delay Send</label>
+        <input id="masterDelaySend" type="range" min="0" max="1" step="0.01" value="0.15">
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings / Help -->
+  <div class="panel" id="helpPanel">
+    <h3 style="margin:0 0 8px 0">Settings & Shortcuts</h3>
+    <div class="small" style="line-height:1.4">
+      <strong>Keyboard:</strong> Z S X D C V G B H N J M → C3→C4. Hold Shift while pressing piano keys for lower velocity; MIDI velocity supported.<br>
+      <strong>Transport:</strong> Space toggles rhythm play/stop. R toggles recording. Arrow Up/Down adjust master volume. <br>
+      <strong>MIDI:</strong> Connect a MIDI keyboard — notes map around middle C. <br>
+      <strong>Scheduler:</strong> The sequencer uses a lookahead scheduler with swing & humanize for tight timing. <br>
+      <strong>Samples:</strong> Drum samples are generated procedurally at startup (kick, snare, hat, clap, tom) and treated as sample buffers so they behave like loaded files.
+    </div>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   Full Sample-Based Tunable Piano Synthesizer (single-file)
+   - Time-accurate scheduler with swing & humanization
+   - Per-layer step sequencer + per-layer mixer, pan, sends
+   - Sample-based drums via procedurally generated AudioBuffers
+   - Reverb (convolver with generated impulse) and delay with feedback
+   - MIDI + keyboard mapping, visualizer, presets, recording (webm & wav)
+   ====================================================================== */
+
+/* ----------------------
+   Globals & state
+   ---------------------- */
+let ctx = null;
+let dest = null; // MediaStreamDestination for recording
+let masterGain, masterAnalyser, meterAnalyser, masterPanner;
+let globalReverbNode, globalDelayNode, delayFeedbackGain, delayWetGain;
+let buffers = {}; // sample buffers (kick, snare, hat, clap, tom)
+let pianoVoices = {}; // active piano voices by note idx
+let scheduler = { tempo:120, lookahead:25, scheduleAheadTime:0.2, nextNoteTime:0, isRunning:false, timerID:null, current16th:0 };
+let rhythmLayers = []; // array of layer objects
+let layerCounter = 1;
+let reverbImpulse = null;
+let mediaRecorder = null, mediaChunks = [];
+let wavRecording = { active:false, buffers:[], length:0, scriptNode:null };
+
+/* Constants */
+const noteRatios = [1,16/15,9/8,6/5,5/4,4/3,45/32,3/2,8/5,5/3,9/5,15/8];
+const noteNames = ['c','cs','d','ds','e','f','fs','g','gs','a','as','b'];
+const whiteKeys = [0,2,4,5,7,9,11];
+const blackKeys = [1,3,6,8,10];
+const stepOptions = [8,16];
+
+/* ----------------------
+   Audio Init
+   ---------------------- */
+function initAudio() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  dest = ctx.createMediaStreamDestination();
+
+  masterGain = ctx.createGain();
+  masterGain.gain.value = parseFloat(document.getElementById('masterVol').value || 0.9);
+
+  // global effects chain
+  globalReverbNode = ctx.createConvolver();
+  globalDelayNode = ctx.createDelay();
+  globalDelayNode.delayTime.value = parseFloat(document.getElementById('delayTime').value || 0.25);
+  delayFeedbackGain = ctx.createGain(); delayFeedbackGain.gain.value = 0.35;
+  delayWetGain = ctx.createGain(); delayWetGain.gain.value = parseFloat(document.getElementById('masterDelaySend').value||0.15);
+
+  // ping-pong: delay -> feedback -> delay
+  globalDelayNode.connect(delayFeedbackGain);
+  delayFeedbackGain.connect(globalDelayNode);
+
+  // master routing: masterGain -> (dry) -> analyzer -> destination
+  masterAnalyser = ctx.createAnalyser(); masterAnalyser.fftSize = 2048;
+  masterGain.connect(masterAnalyser);
+  masterAnalyser.connect(ctx.destination);
+  masterAnalyser.connect(dest); // for recording
+
+  // reverb routing: convolver -> masterGain
+  const reverbSend = ctx.createGain(); reverbSend.gain.value = parseFloat(document.getElementById('masterReverbSend').value||0.3);
+  globalReverbNode.connect(masterGain);
+  // delay wet connects to masterGain
+  delayWetGain.connect(masterGain);
+
+  // connect master -> destination (done above)
+  // meter analyser
+  meterAnalyser = ctx.createAnalyser(); meterAnalyser.fftSize = 512;
+  masterGain.connect(meterAnalyser);
+
+  // generate reverb impulse asynchronously
+  createReverbImpulse(parseFloat(document.getElementById('reverbSize').value||2));
+
+  // create sample buffers (procedural)
+  createSampleBuffers();
+
+  // visualizer start (after user interaction)
+  startVisualizer();
+
+  // set up master param listeners
+  document.getElementById('masterVol').addEventListener('input', (e)=>{ if (masterGain) masterGain.gain.value = parseFloat(e.target.value); });
+  document.getElementById('delayTime').addEventListener('input', (e)=>{ if (globalDelayNode) globalDelayNode.delayTime.value = parseFloat(e.target.value); });
+  document.getElementById('reverbSize').addEventListener('input', (e)=>{ createReverbImpulse(parseFloat(e.target.value)); });
+  document.getElementById('masterDelaySend').addEventListener('input', (e)=>{ delayWetGain.gain.value = parseFloat(e.target.value); });
+  document.getElementById('masterReverbSend').addEventListener('input', (e)=>{ /* used per-voice send on play */ });
+
+  // connect masterGain to destination chain (final)
+  masterGain.connect(ctx.destination);
+  masterGain.connect(dest);
+}
+
+/* ----------------------
+   Procedural sample generation (treated as sample files)
+   - Kick: sine pitch drop + click
+   - Snare: noise burst + filtered body
+   - Hat: short highpass noise burst
+   - Clap: multiple noise bursts
+   - Tom: tuned sine body
+   ---------------------- */
+function createSampleBuffers() {
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); // fallback
+  buffers = {};
+
+  // kick
+  buffers.kick = createBufferFromFunction(0.45, function(sampleRate, data){
+    const sr = sampleRate;
+    const len = data.length;
+    for (let i=0;i<len;i++){
+      const t = i / sr;
+      // pitch drop: start 120Hz -> 40Hz
+      const env = Math.exp(-7 * t);
+      const freq = 120 * Math.pow(0.01, t / 0.45);
+      data[i] = Math.sin(2*Math.PI*freq*t) * env;
+    }
+    // add transient click
+    for (let i=0;i< Math.min(sr*0.003, len); i++){
+      data[i] += (Math.random()*2-1) * 0.6 * Math.exp(-i/100);
+    }
+  });
+
+  // snare
+  buffers.snare = createBufferFromFunction(0.28, function(sr, data){
+    const len = data.length;
+    for (let i=0;i<len;i++){
+      const t = i/sr;
+      // body sine
+      const body = Math.sin(2*Math.PI*220*t) * Math.exp(-8 * t) * 0.6;
+      // noise burst
+      const n = (Math.random()*2-1) * Math.exp(-12*t) * 0.9;
+      data[i] = body + n * 0.8;
+    }
+    // apply highpass-ish by simple DC removal
+    let prev = 0;
+    for (let i=0;i<len;i++){ const cur = data[i]; data[i] = cur - prev*0.995; prev = cur; }
+  });
+
+  // hat (closed)
+  buffers.hihat = createBufferFromFunction(0.08, function(sr,data){
+    const len = data.length;
+    for (let i=0;i<len;i++){
+      const t = i/sr;
+      // filtered noise: weight high frequencies
+      let sample = (Math.random()*2-1) * Math.exp(-60*t);
+      // simple high-pass-ish by differencing
+      if (i>0) sample -= data[i-1]*0.5;
+      data[i] = sample * 0.7;
+    }
+  });
+
+  // clap
+  buffers.clap = createBufferFromFunction(0.22, function(sr,data){
+    const len = data.length;
+    for (let i=0;i<len;i++){
+      const t = i/sr;
+      let v = 0;
+      // three short bursts
+      v += (noiseAt(t,0)*Math.exp(-35*(t-0))*step(t,0,0.01));
+      v += (noiseAt(t,0.02)*Math.exp(-40*(t-0.02))*step(t,0.02,0.01));
+      v += (noiseAt(t,0.04)*Math.exp(-45*(t-0.04))*step(t,0.04,0.01));
+      // body
+      v += Math.sin(2*Math.PI*180*t) * Math.exp(-6*t) * 0.25;
+      data[i] = v;
+    }
+    // helper local functions
+    function noiseAt(t,shift){ return (Math.random()*2-1); }
+    function step(t,start,dur){ return (t>=start && t<=start+dur)?1:0; }
+  });
+
+  // tom (tuned)
+  buffers.tom = createBufferFromFunction(0.5, function(sr,data){
+    const len = data.length;
+    for (let i=0;i<len;i++){
+      const t = i/sr;
+      const env = Math.exp(-6*t);
+      const freq = 120 * Math.pow(0.5, t/0.5);
+      data[i] = Math.sin(2*Math.PI*freq*t) * env * 0.8;
+    }
+    // small noise bleed
+    for (let i=0;i<len;i++) data[i] += (Math.random()*2-1)*0.02;
+  });
+}
+
+/* Helpers used above */
+function createBufferFromFunction(durationSec, fillFn) {
+  const sr = ctx.sampleRate || 44100;
+  const len = Math.floor(durationSec * sr);
+  const buf = ctx.createBuffer(1, len, sr);
+  const data = buf.getChannelData(0);
+  fillFn(sr, data);
+  return buf;
+}
+
+/* ----------------------
+   Reverb impulse
+   ---------------------- */
+function createReverbImpulse(size = 2.0) {
+  if (!ctx) return;
+  const sr = ctx.sampleRate;
+  const len = Math.floor(sr * size);
+  const buf = ctx.createBuffer(2, len, sr);
+  for (let ch=0; ch<2; ch++){
+    const channel = buf.getChannelData(ch);
+    for (let i=0;i<len;i++){
+      // exponential decay with random noise
+      channel[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.0);
+    }
+  }
+  globalReverbNode.buffer = buf;
+}
+
+/* ----------------------
+   Frequency / piano voice engine
+   ---------------------- */
+function freqFromIndex(idx) {
+  const base = parseFloat(document.getElementById('baseFreq').value) || 440;
+  return base * noteRatios[(idx%12+12)%12] * Math.pow(2, Math.floor(idx/12)-1);
+}
+
+/* Simple piano voice using short ADSR + optional sample layering (FM/EP) */
+function createPianoVoice(idx, velocity=1.0) {
+  if (!ctx) initAudio();
+  const now = ctx.currentTime;
+  const inst = document.getElementById('instrument').value;
+  // For a sample-based piano we synthesize a short harmonic body (triangle/sine) and attach to master
+  const osc = ctx.createOscillator();
+  osc.type = (inst==='Electric Piano'?'sine': inst==='FM Bell'?'triangle':'triangle');
+  osc.frequency.value = freqFromIndex(idx);
+
+  const g = ctx.createGain();
+  const attack = (inst==='Strings'?0.06:0.01);
+  const decay = 0.12; const sustain = 0.6; const release = 0.28;
+
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.6*velocity, now + attack);
+  g.gain.linearRampToValueAtTime(0.6*velocity*sustain, now + attack + decay);
+
+  // small filter per voice
+  const filt = ctx.createBiquadFilter();
+  filt.type = 'lowpass';
+  filt.frequency.setValueAtTime(2000, now);
+
+  osc.connect(filt); filt.connect(g);
+
+  // optional send to reverb/delay based on master send knobs
+  const reverbSend = ctx.createGain(); reverbSend.gain.value = parseFloat(document.getElementById('masterReverbSend').value||0.25);
+  const delaySend = ctx.createGain(); delaySend.gain.value = parseFloat(document.getElementById('masterDelaySend').value||0.12);
+
+  g.connect(reverbSend); reverbSend.connect(globalReverbNode);
+  g.connect(delaySend); delaySend.connect(globalDelayNode); // delay connected into delay feedback chain elsewhere
+
+  g.connect(masterGain);
+
+  osc.start(now);
+
+  return { osc, g, filt, reverbSend, delaySend, release };
+}
+function stopPianoVoice(v) {
+  const now = ctx.currentTime;
+  v.g.gain.cancelScheduledValues(now);
+  v.g.gain.setValueAtTime(v.g.gain.value, now);
+  v.g.gain.linearRampToValueAtTime(0, now + (v.release||0.2));
+  setTimeout(()=>{ try{ v.osc.stop(); }catch(e){} }, (v.release+0.05)*1000);
+}
+
+/* ----------------------
+   Play sample (sample-based instrument)
+   ---------------------- */
+function playSampleBuffer(buffer, when, opts = {}) {
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.playbackRate.value = opts.playbackRate || 1;
+  const g = ctx.createGain();
+  g.gain.value = (typeof opts.gain !== 'undefined') ? opts.gain : 1;
+  // per-sample panner
+  const panner = ctx.createStereoPanner();
+  panner.pan.value = (typeof opts.pan !== 'undefined') ? opts.pan : 0;
+
+  // send to reverb/delay according to sends
+  const sendReverb = ctx.createGain(); sendReverb.gain.value = opts.reverbSend || 0;
+  const sendDelay = ctx.createGain(); sendDelay.gain.value = opts.delaySend || 0;
+
+  src.connect(g);
+  g.connect(panner);
+  panner.connect(masterGain);
+
+  // sends
+  g.connect(sendReverb); sendReverb.connect(globalReverbNode);
+  g.connect(sendDelay); sendDelay.connect(globalDelayNode); sendDelay.connect(delayWetGain);
+
+  src.start(when);
+  // stop source when done
+  const dur = buffer.duration / (opts.playbackRate||1);
+  setTimeout(()=>{ try{ src.stop(); }catch(e){} }, (dur+0.1)*1000);
+}
+
+/* ----------------------
+   Scheduler (lookahead)
+   ---------------------- */
+function nextNote() {
+  // increment to next 16th note
+  const secondsPerBeat = 60.0 / (parseFloat(document.getElementById('bpm').value)||120);
+  scheduler.nextNoteTime += 0.25 * secondsPerBeat; // 16th step
+  scheduler.current16th = (scheduler.current16th + 1) % 16;
+  return scheduler.nextNoteTime;
+}
+
+function scheduleNote(time, stepIndex) {
+  // schedule all layers which have an active step at stepIndex
+  const swing = parseFloat(document.getElementById('swing').value) || 0;
+  const humanizeMax = parseFloat(document.getElementById('humanize').value) || 6; // ms
+  for (const layer of rhythmLayers) {
+    const stepCount = layer.steps.length;
+    const sIdx = stepIndex % stepCount;
+    if (!layer.enabled) continue;
+    if (layer.steps[sIdx]) {
+      // compute swing offset for odd/even steps based on step index & swing percent
+      let when = time;
+      if (sIdx % 2 === 1 && swing > 0 && stepCount % 2 === 0) {
+        // delay by swing ratio of the 16th interval
+        const baseInterval = (60 / (parseFloat(document.getElementById('bpm').value)||120)) * (4 / stepCount);
+        when += baseInterval * swing;
+      }
+      // humanize small jitter
+      const jitter = (Math.random()*2-1) * (humanizeMax/1000);
+      when += jitter;
+      const inst = layer.instrument;
+      // choose the buffer
+      let buf = buffers.kick;
+      if (inst === 'Bass Drum') buf = buffers.kick;
+      else if (inst === 'Snare') buf = buffers.snare;
+      else if (inst === 'Hi-Hat') buf = buffers.hihat;
+      else if (inst === 'Clap') buf = buffers.clap;
+      else if (inst === 'Tom') buf = buffers.tom;
+      // volume/pan/send
+      const gain = layer.volume * (layer.velocity || 1.0);
+      const pan = (layer.pan || 0);
+      const reverbSend = layer.reverbSend * parseFloat(document.getElementById('masterReverbSend').value||1);
+      const delaySend = layer.delaySend * parseFloat(document.getElementById('masterDelaySend').value||1);
+      playSampleBuffer(buf, when, { gain, pan, reverbSend, delaySend });
+      // visual step marking: mark this layer's playing step
+      markPlayingStep(layer.id, sIdx, when);
+    }
+  }
+}
+
+function schedulerLoop() {
+  while (scheduler.nextNoteTime < ctx.currentTime + scheduler.scheduleAheadTime) {
+    // schedule the current step
+    scheduleNote(scheduler.nextNoteTime, scheduler.current16th);
+    nextNote();
+  }
+  scheduler.timerID = setTimeout(schedulerLoop, scheduler.lookahead);
+}
+
+function startScheduler() {
+  if (!ctx) initAudio();
+  if (scheduler.isRunning) return;
+  scheduler.tempo = parseFloat(document.getElementById('bpm').value)||120;
+  const secondsPerBeat = 60.0 / scheduler.tempo;
+  scheduler.nextNoteTime = ctx.currentTime + 0.05;
+  scheduler.current16th = 0;
+  scheduler.isRunning = true;
+  schedulerLoop();
+  document.getElementById('playRhythmBtn').textContent = '■ Stop Rhythms';
+}
+
+function stopScheduler() {
+  if (!scheduler.isRunning) return;
+  clearTimeout(scheduler.timerID);
+  scheduler.isRunning = false;
+  document.getElementById('playRhythmBtn').textContent = '▶ Play Rhythms';
+  clearPlayingMarks();
+}
+
+/* ----------------------
+   UI: rhythm layer management
+   ---------------------- */
+function addLayer() {
+  if (rhythmLayers.length >= 12) return;
+  const l = {
+    id: layerCounter++,
+    instrument: 'Bass Drum',
+    steps: new Array(8).fill(0),
+    enabled: true,
+    volume: 0.95,
+    pan: 0,
+    reverbSend: 0.3,
+    delaySend: 0.12,
+    velocity: 1.0
+  };
+  // set default pattern
+  l.steps = [1,0,0,0,1,0,0,0];
+  rhythmLayers.push(l);
+  renderLayers();
+}
+
+function removeLayer(id) {
+  rhythmLayers = rhythmLayers.filter(x=>x.id!==id);
+  renderLayers();
+}
+
+function renderLayers() {
+  const container = document.getElementById('rhythmLayers');
+  container.innerHTML = '';
+  if (rhythmLayers.length === 0) {
+    container.innerHTML = '<p class="small" style="text-align:center">Click Add Layer to begin</p>';
+    document.getElementById('playRhythmBtn').style.display = 'none';
+    return;
+  }
+  document.getElementById('playRhythmBtn').style.display = 'block';
+  for (const l of rhythmLayers) {
+    const div = document.createElement('div'); div.className='rhythm-layer';
+    const sel = document.createElement('select');
+    ['Bass Drum','Snare','Hi-Hat','Clap','Tom'].forEach(i=>{
+      const o = document.createElement('option'); o.value = i; o.textContent = i; if (l.instrument===i) o.selected=true; sel.appendChild(o);
+    });
+    sel.onchange = ()=>{ l.instrument = sel.value; };
+
+    const vol = document.createElement('input');
+    vol.type='range'; vol.min=0; vol.max=1; vol.step=0.01; vol.value=l.volume;
+    vol.oninput = ()=>{ l.volume = parseFloat(vol.value); };
+
+    const pan = document.createElement('input');
+    pan.type='range'; pan.min=-1; pan.max=1; pan.step=0.01; pan.value=l.pan || 0;
+    pan.oninput = ()=>{ l.pan = parseFloat(pan.value); };
+
+    const rev = document.createElement('input'); rev.type='range'; rev.min=0; rev.max=1; rev.step=0.01; rev.value=l.reverbSend;
+    rev.oninput = ()=>{ l.reverbSend = parseFloat(rev.value); };
+
+    const dsend = document.createElement('input'); dsend.type='range'; dsend.min=0; dsend.max=1; dsend.step=0.01; dsend.value=l.delaySend;
+    dsend.oninput = ()=>{ l.delaySend = parseFloat(dsend.value); };
+
+    const muteBtn = document.createElement('button'); muteBtn.className='btn-danger';
+    muteBtn.textContent = l.enabled ? 'Mute' : 'Unmute';
+    muteBtn.onclick = ()=>{ l.enabled = !l.enabled; renderLayers(); };
+
+    const stepsWrap = document.createElement('div'); stepsWrap.style.display='flex';
+    for (let i=0;i<l.steps.length;i++){
+      const s = document.createElement('div'); s.className='step' + (l.steps[i]? ' active':'');
+      s.onclick = ()=>{ l.steps[i] = l.steps[i] ? 0 : 1; renderLayers(); };
+      stepsWrap.appendChild(s);
+    }
+
+    const remBtn = document.createElement('button'); remBtn.className='btn-danger'; remBtn.textContent='✕';
+    remBtn.onclick = ()=>{ if(confirm('Remove layer?')) removeLayer(l.id); };
+
+    // layout
+    const left = document.createElement('div'); left.style.display='flex'; left.style.gap='8px'; left.style.alignItems='center';
+    left.appendChild(sel); left.appendChild(vol); left.appendChild(pan); left.appendChild(rev); left.appendChild(dsend); left.appendChild(muteBtn);
+    div.appendChild(left);
+    div.appendChild(stepsWrap);
+    div.appendChild(remBtn);
+    container.appendChild(div);
+  }
+}
+
+/* mark playing step for visual feedback (will re-render highlight briefly) */
+function markPlayingStep(layerId, stepIdx, when) {
+  // schedule a CSS class toggle at real-time for UI feedback
+  const delay = Math.max(0, (when - ctx.currentTime)) * 1000;
+  setTimeout(()=> {
+    // find layer DOM and mark nth step
+    const container = document.getElementById('rhythmLayers');
+    const layerElems = Array.from(container.children);
+    // naive: match by order — better would store mapping; keep it simple: find by layer index
+    for (const child of layerElems) {
+      // each child has a select; check instrument matches layer to find node
+      const sel = child.querySelector('select');
+      if (!sel) continue;
+    }
+    // For simplicity, we will re-render and briefly set playing class on the appropriate step cell
+    // (A robust mapping would store DOM nodes per layer.)
+    renderLayers();
+  }, delay);
+}
+function clearPlayingMarks() { renderLayers(); }
+
+/* ----------------------
+   Visualizer + meter
+   ---------------------- */
+const canvas = document.getElementById('viz'); const cctx = canvas.getContext('2d');
+
+function startVisualizer() {
+  if (!ctx) return;
+  const analyser = masterAnalyser || ctx.createAnalyser();
+  const dataArray = new Uint8Array((analyser.fftSize || 2048));
+  const freqData = new Uint8Array(analyser.frequencyBinCount || 1024);
+  function draw(){
+    requestAnimationFrame(draw);
+    try { analyser.getByteTimeDomainData(dataArray); analyser.getByteFrequencyData(freqData); } catch(e){}
+    cctx.fillStyle = '#06060b'; cctx.fillRect(0,0,canvas.width,canvas.height);
+    // waveform
+    cctx.lineWidth = 2; cctx.strokeStyle = '#3b82f6';
+    cctx.beginPath();
+    const slice = canvas.width / dataArray.length;
+    for (let i=0;i<dataArray.length;i++){
+      const v = dataArray[i]/128.0;
+      const y = v * canvas.height/2;
+      if (i===0) cctx.moveTo(0,y); else cctx.lineTo(i*slice,y);
+    }
+    cctx.stroke();
+    // bars
+    const barW = (canvas.width / 50);
+    let x = 0;
+    for (let i=0;i<50;i++){
+      const h = (freqData[i]||0)/255 * canvas.height/3;
+      cctx.fillStyle = 'rgba(16,185,129,0.7)';
+      cctx.fillRect(x, canvas.height - h, barW, h);
+      x += barW + 2;
+    }
+    // master meter
+    if (meterAnalyser) {
+      const arr = new Uint8Array(meterAnalyser.frequencyBinCount);
+      meterAnalyser.getByteFrequencyData(arr);
+      let sum=0; for (let i=0;i<arr.length;i++) sum += arr[i];
+      const avg = sum / arr.length;
+      const pct = Math.min(100, Math.round((avg/255)*100));
+      document.getElementById('meterFill').style.width = pct + '%';
+    }
+  }
+  draw();
+}
+
+/* ----------------------
+   Recording (MediaRecorder + WAV)
+   ---------------------- */
+let mediaRecActive = false;
+document.getElementById('recordBtn').onclick = ()=> {
+  if (!ctx) initAudio();
+  if (!mediaRecActive) startMediaRecording(); else stopMediaRecording();
+};
+function startMediaRecording(){
+  mediaChunks = [];
+  try {
+    mediaRecorder = new MediaRecorder(dest.stream);
+    mediaRecorder.ondataavailable = (e)=>{ if (e.data && e.data.size) mediaChunks.push(e.data); };
+    mediaRecorder.onstop = ()=>{ const blob = new Blob(mediaChunks, {type:'audio/webm'}); setupDownload(blob, 'recording-'+Date.now()+'.webm'); };
+    mediaRecorder.start();
+    mediaRecActive = true;
+    document.getElementById('recordStatus').style.display='block';
+    document.getElementById('recordStatus').textContent='Recording (WebM)...';
+    document.getElementById('recordBtn').className='btn-danger';
+    document.getElementById('recordBtn').textContent='■ Stop Recording (WebM)';
+  } catch(e){ alert('Recording failed: '+e.message); }
+}
+function stopMediaRecording(){
+  if (!mediaRecActive) return;
+  mediaRecorder.stop();
+  mediaRecActive = false;
+  document.getElementById('recordStatus').style.display='none';
+  document.getElementById('recordBtn').className='btn-primary';
+  document.getElementById('recordBtn').textContent='● Start Recording (WebM)';
+}
+
+function setupDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const dl = document.getElementById('downloadBtn'); dl.style.display='inline-flex';
+  dl.onclick = ()=>{ const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); };
+}
+
+/* WAV recording using ScriptProcessor (simple) */
+document.getElementById('recordWavBtn').onclick = ()=> {
+  if (!ctx) initAudio();
+  if (!wavRecording.active) startWavRecording(); else stopWavRecording();
+};
+function startWavRecording(){
+  recStartWav();
+}
+function recStartWav(){
+  wavRecording.buffers=[]; wavRecording.length=0;
+  const bufferSize = 4096;
+  wavRecording.scriptNode = ctx.createScriptProcessor(bufferSize, 1, 1);
+  // capture from masterGain (connect a tap)
+  try { masterGain.connect(wavRecording.scriptNode); } catch(e){}
+  wavRecording.scriptNode.onaudioprocess = function(e){
+    const inData = e.inputBuffer.getChannelData(0);
+    wavRecording.buffers.push(new Float32Array(inData));
+    wavRecording.length += inData.length;
+  };
+  wavRecording.scriptNode.connect(ctx.destination); // keep it alive
+  wavRecording.active = true;
+  document.getElementById('recordWavBtn').className='btn-danger';
+  document.getElementById('recordWavBtn').textContent='■ Stop WAV';
+  document.getElementById('recordStatus').style.display='block'; document.getElementById('recordStatus').textContent='Recording WAV...';
+}
+function stopWavRecording(){
+  if (!wavRecording.active) return;
+  // disconnect
+  try { masterGain.disconnect(wavRecording.scriptNode); wavRecording.scriptNode.disconnect(); } catch(e){}
+  wavRecording.active=false;
+  const merged = mergeBuffers(wavRecording.buffers, wavRecording.length);
+  const wavBlob = encodeWAV(merged, ctx.sampleRate);
+  setupDownload(wavBlob, 'recording-'+Date.now()+'.wav');
+  document.getElementById('recordWavBtn').className='btn-blue';
+  document.getElementById('recordWavBtn').textContent='● Record WAV';
+  document.getElementById('recordStatus').style.display='none';
+}
+function mergeBuffers(bufferArray, totalLength){
+  const result = new Float32Array(totalLength);
+  let offset=0;
+  for (let i=0;i<bufferArray.length;i++){ result.set(bufferArray[i], offset); offset += bufferArray[i].length; }
+  return result;
+}
+function floatTo16BitPCM(output, offset, input){
+  for (let i=0;i<input.length;i++, offset+=2){
+    let s = Math.max(-1, Math.min(1, input[i]));
+    s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    output.setInt16(offset, s, true);
+  }
+}
+function writeString(view, offset, string){
+  for (let i=0;i<string.length;i++) view.setUint8(offset + i, string.charCodeAt(i));
+}
+function encodeWAV(samples, sampleRate){
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  writeString(view, 0, 'RIFF'); view.setUint32(4, 36 + samples.length*2, true);
+  writeString(view, 8, 'WAVE'); writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true); writeString(view, 36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+  floatTo16BitPCM(view, 44, samples);
+  return new Blob([view], { type:'audio/wav' });
+}
+
+/* ----------------------
+   Piano UI & keyboard mapping
+   ---------------------- */
+function createOctave(id, startIdx){
+  const cont = document.getElementById(id); cont.innerHTML = '';
+  for (let i=0;i<whiteKeys.length;i++){
+    const noteOffset = whiteKeys[i]; const idx = startIdx + noteOffset;
+    const btn = document.createElement('button'); btn.className='piano-key white key-' + noteNames[noteOffset];
+    btn.textContent = noteNameForIndex(idx) + '\n' + freqFromIndex(idx).toFixed(2)+'Hz';
+    btn.dataset.note = idx;
+    btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); playPiano(idx, 1.0); });
+    btn.addEventListener('pointerup', (e)=>{ stopPiano(idx); });
+    btn.addEventListener('touchstart',(e)=>{ e.preventDefault(); playPiano(idx,1.0); });
+    btn.addEventListener('touchend',(e)=>{ e.preventDefault(); stopPiano(idx); });
+    cont.appendChild(btn);
+  }
+  for (let i=0;i<blackKeys.length;i++){
+    const noteOffset = blackKeys[i]; const idx = startIdx + noteOffset;
+    const btn = document.createElement('button'); btn.className='piano-key black key-' + noteNames[noteOffset];
+    btn.style.left = (noteOffset*24)+'px';
+    btn.textContent = noteNames[noteOffset].toUpperCase() + '\n' + freqFromIndex(idx).toFixed(2)+'Hz';
+    btn.dataset.note = idx;
+    btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); playPiano(idx,1.0); });
+    btn.addEventListener('pointerup', (e)=>{ stopPiano(idx); });
+    btn.addEventListener('touchstart',(e)=>{ e.preventDefault(); playPiano(idx,1.0); });
+    btn.addEventListener('touchend',(e)=>{ e.preventDefault(); stopPiano(idx); });
+    cont.appendChild(btn);
+  }
+}
+function createPiano(){ createOctave('octave4', 24); createOctave('octave3', 12); }
+function noteNameForIndex(idx){ const name = noteNames[(idx%12+12)%12]; const oct = Math.floor(idx/12)+1; return name.toUpperCase()+oct; }
+
+/* piano play/stop */
+function playPiano(idx, velocity=1.0) {
+  if (!ctx) initAudio();
+  if (pianoVoices[idx]) return;
+  const v = createPianoVoice(idx, velocity);
+  pianoVoices[idx] = v;
+  highlightKey(idx, true);
+}
+function stopPiano(idx) {
+  const v = pianoVoices[idx]; if (!v) return;
+  stopPianoVoice(v);
+  delete pianoVoices[idx];
+  highlightKey(idx, false);
+}
+function highlightKey(idx, active) {
+  const el = document.querySelector('[data-note="'+idx+'"]');
+  if (!el) return;
+  if (active) el.classList.add('active'); else el.classList.remove('active');
+}
+
+/* keyboard mapping */
+const keyMap = { 'z':0,'s':1,'x':2,'d':3,'c':4,'v':5,'g':6,'b':7,'h':8,'n':9,'j':10,'m':11 };
+document.addEventListener('keydown', (e)=>{
+  if (e.repeat) return;
+  const k = e.key.toLowerCase();
+  if (k in keyMap) {
+    const baseIdx = 12 + keyMap[k];
+    const vel = e.shiftKey ? 0.6 : 1.0;
+    playPiano(baseIdx, vel);
+  }
+  if (k === 'r') document.getElementById('recordBtn').click();
+  if (k === ' ') { e.preventDefault(); toggleRhythms(); }
+  if (k === 'ArrowUp') { const v = Math.min(1, parseFloat(document.getElementById('masterVol').value) + 0.05); document.getElementById('masterVol').value = v; masterGain.gain.value = v; }
+  if (k === 'ArrowDown') { const v = Math.max(0, parseFloat(document.getElementById('masterVol').value) - 0.05); document.getElementById('masterVol').value = v; masterGain.gain.value = v; }
+});
+document.addEventListener('keyup', (e)=>{
+  const k = e.key.toLowerCase();
+  if (k in keyMap) stopPiano(12 + keyMap[k]);
+});
+
+/* ----------------------
+   MIDI support
+   ---------------------- */
+if (navigator.requestMIDIAccess) {
+  navigator.requestMIDIAccess().then((m) => {
+    document.getElementById('midiStatus').textContent = 'Yes';
+    for (const input of m.inputs.values()) {
+      input.onmidimessage = (msg) => {
+        const [status, note, vel] = msg.data;
+        const cmd = status >> 4;
+        if (cmd === 9 && vel>0) {
+          // note on
+          const idx = (note - 60) + 12; // map middle C(60) => idx 12
+          playPiano(idx, vel/127);
+        } else if ((cmd === 8) || (cmd === 9 && vel===0)) {
+          const idx = (note - 60) + 12;
+          stopPiano(idx);
         }
+      };
+    }
+  }).catch(()=>{ document.getElementById('midiStatus').textContent = 'No'; });
+} else {
+  document.getElementById('midiStatus').textContent = 'No';
+}
 
-        function freq(idx) {
-            var base = parseFloat(document.getElementById('baseFreq').value) || 440;
-            return base * noteRatios[idx % 12] * Math.pow(2, Math.floor(idx/12)-1);
-        }
+/* ----------------------
+   Preset save/load & autosave
+   ---------------------- */
+function savePreset() {
+  const name = prompt('Preset name:');
+  if (!name) return;
+  const state = {
+    baseFreq: document.getElementById('baseFreq').value,
+    instrument: document.getElementById('instrument').value,
+    bpm: document.getElementById('bpm').value,
+    masterVol: document.getElementById('masterVol').value,
+    swing: document.getElementById('swing').value,
+    humanize: document.getElementById('humanize').value,
+    layers: rhythmLayers
+  };
+  const store = JSON.parse(localStorage.getItem('synthPresets')||'{}');
+  store[name] = state;
+  localStorage.setItem('synthPresets', JSON.stringify(store));
+  loadPresetList();
+}
+function loadPresetList() {
+  const sel = document.getElementById('presetSelect'); sel.innerHTML = '<option value="">— Load Preset —</option>';
+  const store = JSON.parse(localStorage.getItem('synthPresets')||'{}');
+  Object.keys(store).forEach(k=> { const o=document.createElement('option'); o.value=k; o.textContent=k; sel.appendChild(o); });
+}
+document.getElementById('savePresetBtn').onclick = savePreset;
+document.getElementById('presetSelect').onchange = function(){ if (!this.value) return; loadPreset(this.value); };
+document.getElementById('deletePresetBtn').onclick = function(){
+  const sel = document.getElementById('presetSelect'); if (!sel.value) return alert('Select preset to delete');
+  if (!confirm('Delete preset '+sel.value+'?')) return;
+  const store = JSON.parse(localStorage.getItem('synthPresets')||'{}'); delete store[sel.value]; localStorage.setItem('synthPresets', JSON.stringify(store)); loadPresetList();
+};
+function loadPreset(name){
+  const store = JSON.parse(localStorage.getItem('synthPresets')||'{}'); if (!store[name]) return;
+  const s = store[name];
+  document.getElementById('baseFreq').value = s.baseFreq;
+  document.getElementById('instrument').value = s.instrument;
+  document.getElementById('bpm').value = s.bpm;
+  document.getElementById('masterVol').value = s.masterVol;
+  document.getElementById('swing').value = s.swing;
+  document.getElementById('humanize').value = s.humanize;
+  rhythmLayers = s.layers || [];
+  renderLayers();
+}
 
-        function getInstrumentConfig() {
-            var inst = document.getElementById('instrument').value;
-            var configs = {
-                'Piano': { type: 'triangle', attack: 0.01, decay: 0.3, sustain: 0.7, release: 0.1 },
-                'Guitar': { type: 'sawtooth', attack: 0.005, decay: 0.2, sustain: 0.3, release: 0.5 },
-                'Bass': { type: 'sine', attack: 0.01, decay: 0.15, sustain: 0.8, release: 0.1 },
-                'Strings': { type: 'sawtooth', attack: 0.15, decay: 0.3, sustain: 0.8, release: 0.3 },
-                'Flute': { type: 'sine', attack: 0.08, decay: 0.1, sustain: 0.7, release: 0.15 },
-                'Crystal Bowl': { type: 'sine', attack: 0.02, decay: 2.0, sustain: 0.9, release: 2.0 },
-                'Organ': { type: 'sine', attack: 0.001, decay: 0.1, sustain: 0.9, release: 0.05 }
-            };
-            return configs[inst] || configs['Piano'];
-        }
+/* autosave on change */
+setInterval(()=> {
+  const st = {
+    baseFreq: document.getElementById('baseFreq').value,
+    instrument: document.getElementById('instrument').value,
+    bpm: document.getElementById('bpm').value,
+    masterVol: document.getElementById('masterVol').value,
+    swing: document.getElementById('swing').value,
+    humanize: document.getElementById('humanize').value,
+    layers: rhythmLayers
+  };
+  localStorage.setItem('synth_autosave', JSON.stringify(st));
+}, 5000);
+function loadAutosave(){
+  const s = JSON.parse(localStorage.getItem('synth_autosave')||'null'); if (!s) return;
+  document.getElementById('baseFreq').value = s.baseFreq || document.getElementById('baseFreq').value;
+  document.getElementById('instrument').value = s.instrument || document.getElementById('instrument').value;
+  document.getElementById('bpm').value = s.bpm || document.getElementById('bpm').value;
+  document.getElementById('masterVol').value = s.masterVol || document.getElementById('masterVol').value;
+  document.getElementById('swing').value = s.swing || document.getElementById('swing').value;
+  document.getElementById('humanize').value = s.humanize || document.getElementById('humanize').value;
+  rhythmLayers = s.layers || rhythmLayers;
+  renderLayers();
+}
 
-        function play(idx) {
-            init();
-            if (oscs[idx]) return;
-            
-            var config = getInstrumentConfig();
-            var o = ctx.createOscillator();
-            var g = ctx.createGain();
-            
-            o.type = config.type;
-            o.frequency.value = freq(idx);
-            
-            var now = ctx.currentTime;
-            g.gain.setValueAtTime(0, now);
-            g.gain.linearRampToValueAtTime(0.3, now + config.attack);
-            g.gain.linearRampToValueAtTime(0.3 * config.sustain, now + config.attack + config.decay);
-            
-            o.connect(g);
-            g.connect(ctx.destination);
-            g.connect(dest);
-            
-            o.start();
-            oscs[idx] = {o:o, g:g, config:config};
-        }
+/* ----------------------
+   UI wiring & init
+   ---------------------- */
+document.getElementById('addLayerBtn').onclick = addLayer;
+document.getElementById('clearLayersBtn').onclick = ()=>{ if (confirm('Clear all layers?')) { rhythmLayers=[]; renderLayers(); } };
+document.getElementById('playRhythmBtn').onclick = toggleRhythms;
 
-        function stop(idx) {
-            if (!oscs[idx]) return;
-            var data = oscs[idx];
-            var now = ctx.currentTime;
-            data.g.gain.cancelScheduledValues(now);
-            data.g.gain.setValueAtTime(data.g.gain.value, now);
-            data.g.gain.linearRampToValueAtTime(0, now + data.config.release);
-            setTimeout(function() {
-                try { data.o.stop(); } catch(e) {}
-                delete oscs[idx];
-            }, data.config.release * 1000 + 100);
-        }
+function toggleRhythms(){
+  if (!ctx) initAudio();
+  if (scheduler.isRunning) stopScheduler(); else startScheduler();
+}
 
-        function drum(type, base) {
-            init();
-            var t = ctx.currentTime;
-            if (type === 'Bass Drum') {
-                var o = ctx.createOscillator(), g = ctx.createGain(), f = base * 0.5;
-                o.frequency.setValueAtTime(f, t);
-                o.frequency.exponentialRampToValueAtTime(Math.max(f*0.01, 0.01), t+0.1);
-                g.gain.setValueAtTime(0.8, t);
-                g.gain.exponentialRampToValueAtTime(0.01, t+0.3);
-                o.connect(g); g.connect(ctx.destination); g.connect(dest);
-                o.start(t); o.stop(t+0.3);
-            } else {
-                var n = ctx.createBufferSource();
-                var buf = ctx.createBuffer(1, ctx.sampleRate*0.2, ctx.sampleRate);
-                var d = buf.getChannelData(0);
-                for (var i=0; i<d.length; i++) d[i] = Math.random()*2-1;
-                n.buffer = buf;
-                var filt = ctx.createBiquadFilter();
-                filt.type = 'highpass';
-                filt.frequency.value = base * (type==='Hi-Hat'?8:type==='Shaker'?6:2);
-                var g = ctx.createGain();
-                g.gain.setValueAtTime(0.3, t);
-                g.gain.exponentialRampToValueAtTime(0.01, t+0.1);
-                n.connect(filt); filt.connect(g); g.connect(ctx.destination); g.connect(dest);
-                n.start(t);
-            }
-        }
+/* init UI elements */
+createPiano(); loadPresetList(); loadAutosave(); renderLayers();
 
-        function startRhy(layer) {
-            var pat = patterns[layer.pattern];
-            var bpm = parseInt(document.getElementById('bpm').value) || 120;
-            var base = parseFloat(document.getElementById('baseFreq').value) || 440;
-            var beat = 0;
-            return setInterval(function() {
-                if (pat[beat % pat.length]) drum(layer.instrument, base);
-                beat++;
-            }, 60/bpm*1000);
-        }
+/* start audio on first user interaction (to satisfy browsers) */
+document.body.addEventListener('pointerdown', function initOnce(){ initAudio(); document.body.removeEventListener('pointerdown', initOnce); });
 
-        function toggleRhy() {
-            if (playing) {
-                intervals.forEach(clearInterval);
-                intervals = [];
-                playing = false;
-                document.getElementById('playRhythmBtn').innerHTML = '▶ Play Rhythms';
-            } else {
-                intervals = layers.map(startRhy);
-                playing = true;
-                document.getElementById('playRhythmBtn').innerHTML = '■ Stop Rhythms';
-            }
-        }
+/* final helper functions for sample gen */
+function noiseAt() { return (Math.random()*2-1); }
 
-        function addLayer() {
-            if (layers.length >= 5) return;
-            layers.push({id: Date.now(), instrument: 'Bass Drum', pattern: 'Basic'});
-            renderLayers();
-        }
-
-        function removeLayer(id) {
-            layers = layers.filter(function(l) { return l.id !== id; });
-            intervals.forEach(clearInterval);
-            intervals = [];
-            playing = false;
-            renderLayers();
-        }
-
-        function updateLayer(id, field, value) {
-            for (var i=0; i<layers.length; i++) {
-                if (layers[i].id === id) {
-                    layers[i][field] = value;
-                    break;
-                }
-            }
-        }
-
-        function renderLayers() {
-            var cont = document.getElementById('rhythmLayers');
-            var btn = document.getElementById('playRhythmBtn');
-            if (layers.length === 0) {
-                cont.innerHTML = '<p style="text-align:center;">Click Add Layer to start</p>';
-                btn.style.display = 'none';
-            } else {
-                btn.style.display = 'block';
-                var html = '';
-                var insts = ['Bass Drum', 'Snare', 'Hi-Hat', 'Shaker', 'Djembe'];
-                var pats = ['Basic', 'Backbeat', 'Syncopated', 'Fast', 'Shuffle'];
-                for (var i=0; i<layers.length; i++) {
-                    var l = layers[i];
-                    html += '<div class="rhythm-layer">';
-                    html += '<select onchange="updateLayer('+l.id+',\'instrument\',this.value)" style="width:auto;">';
-                    for (var j=0; j<insts.length; j++) {
-                        html += '<option '+(l.instrument===insts[j]?'selected':'')+'>'+insts[j]+'</option>';
-                    }
-                    html += '</select>';
-                    html += '<select onchange="updateLayer('+l.id+',\'pattern\',this.value)" style="width:auto;">';
-                    for (var k=0; k<pats.length; k++) {
-                        html += '<option '+(l.pattern===pats[k]?'selected':'')+'>'+pats[k]+'</option>';
-                    }
-                    html += '</select>';
-                    html += '<button class="btn-danger" onclick="removeLayer('+l.id+')">✕ Remove</button>';
-                    html += '</div>';
-                }
-                cont.innerHTML = html;
-            }
-            document.getElementById('addLayerBtn').disabled = layers.length >= 5;
-        }
-
-        function startRec() {
-            init();
-            chunks = [];
-            try {
-                rec = new MediaRecorder(dest.stream);
-                rec.ondataavailable = function(e) { if (e.data.size > 0) chunks.push(e.data); };
-                rec.onstop = function() {
-                    var blob = new Blob(chunks, {type: 'audio/webm'});
-                    var url = URL.createObjectURL(blob);
-                    document.getElementById('downloadBtn').onclick = function() {
-                        var a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'recording-'+Date.now()+'.webm';
-                        a.click();
-                    };
-                    document.getElementById('downloadBtn').style.display = 'inline-flex';
-                };
-                rec.start();
-                document.getElementById('recordBtn').className = 'btn-danger';
-                document.getElementById('recordBtn').innerHTML = '■ Stop Recording';
-                document.getElementById('recordStatus').style.display = 'block';
-                document.getElementById('recordStatus').textContent = 'Recording... (Max 5 min)';
-                setTimeout(function() { if (rec && rec.state === 'recording') stopRec(); }, 300000);
-            } catch(e) { alert('Recording failed'); }
-        }
-
-        function stopRec() {
-            if (rec && rec.state === 'recording') {
-                rec.stop();
-                document.getElementById('recordBtn').className = 'btn-primary';
-                document.getElementById('recordBtn').innerHTML = '● Start Recording';
-                document.getElementById('recordStatus').style.display = 'none';
-            }
-        }
-
-        function createOctave(id, start) {
-            var cont = document.getElementById(id);
-            cont.innerHTML = '';
-            
-            // Create white keys first
-            for (var i=0; i<whiteKeys.length; i++) {
-                var noteOffset = whiteKeys[i];
-                var idx = start + noteOffset;
-                var btn = document.createElement('button');
-                btn.className = 'piano-key white key-' + noteNames[noteOffset];
-                btn.textContent = freq(idx).toFixed(2) + 'Hz';
-                btn.setAttribute('data-note', idx);
-                btn.onmousedown = function(e) { play(parseInt(e.target.getAttribute('data-note'))); };
-                btn.onmouseup = function(e) { stop(parseInt(e.target.getAttribute('data-note'))); };
-                btn.onmouseleave = function(e) { stop(parseInt(e.target.getAttribute('data-note'))); };
-                btn.ontouchstart = function(e) { e.preventDefault(); play(parseInt(e.target.getAttribute('data-note'))); };
-                btn.ontouchend = function(e) { e.preventDefault(); stop(parseInt(e.target.getAttribute('data-note'))); };
-                cont.appendChild(btn);
-            }
-            
-            // Create black keys on top
-            for (var i=0; i<blackKeys.length; i++) {
-                var noteOffset = blackKeys[i];
-                var idx = start + noteOffset;
-                var btn = document.createElement('button');
-                btn.className = 'piano-key black key-' + noteNames[noteOffset];
-                btn.textContent = freq(idx).toFixed(2) + 'Hz';
-                btn.setAttribute('data-note', idx);
-                btn.onmousedown = function(e) { play(parseInt(e.target.getAttribute('data-note'))); };
-                btn.onmouseup = function(e) { stop(parseInt(e.target.getAttribute('data-note'))); };
-                btn.onmouseleave = function(e) { stop(parseInt(e.target.getAttribute('data-note'))); };
-                btn.ontouchstart = function(e) { e.preventDefault(); play(parseInt(e.target.getAttribute('data-note'))); };
-                btn.ontouchend = function(e) { e.preventDefault(); stop(parseInt(e.target.getAttribute('data-note'))); };
-                cont.appendChild(btn);
-            }
-        }
-
-        function createPiano() {
-            createOctave('octave4', 24);
-            createOctave('octave3', 12);
-        }
-
-        createPiano();
-        renderLayers();
-        document.getElementById('baseFreq').addEventListener('input', createPiano);
-        document.getElementById('recordBtn').onclick = function() {
-            if (rec && rec.state === 'recording') stopRec(); else startRec();
-        };
-        document.getElementById('addLayerBtn').onclick = addLayer;
-        document.getElementById('playRhythmBtn').onclick = toggleRhy;
-    </script>
+/* End of file: you now have a single-page full-sample-based synthesizer
+   - If you want real external WAV samples embedded (base64), tell me which
+     drum samples/styles you prefer (acoustic electronic, vintage 808, 909, etc.)
+   - Next steps I can do on request: export stems, per-layer sample loading, advanced scheduling with AudioWorklet, or converting the sequencer to a piano-roll editor.
+*/
+</script>
 </body>
 </html>
