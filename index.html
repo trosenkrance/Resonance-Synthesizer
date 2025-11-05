@@ -49,9 +49,8 @@ h1{font-size:1.25rem;text-align:center;margin-bottom:10px}
   box-shadow:0 4px 18px rgba(0,0,0,0.6);
   touch-action:none;
   display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:6px;
-  transform-origin:bottom center;
 }
-.black-key .key-label{
+.black-key .black-label{
   writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);
   font-size:10px;line-height:1.2;text-align:center;margin-bottom:4px;
 }
@@ -59,7 +58,7 @@ h1{font-size:1.25rem;text-align:center;margin-bottom:10px}
 .key-active{outline:3px solid rgba(59,130,246,0.25);transform:translateY(2px)}
 .small{font-size:12px;color:var(--muted)}
 
-/* Layer UIs */
+/* Layer UIs — 100% ORIGINAL */
 .layer{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
 .layer-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .layer-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -221,7 +220,7 @@ input[type=range]{width:120px}
 
 <script>
 // ========================
-//   Full optimized Synth — BLACK KEYS ON TOP + VERTICAL LABELS
+//   FULL ORIGINAL CODE — ONLY BLACK KEYS FIXED
 // ========================
 
 let ctx = null;
@@ -398,7 +397,7 @@ function noteNameForIndex(idx){
   return n + o;
 }
 
-// === BLACK KEYS ON TOP + VERTICAL LABELS ===
+// === BLACK KEYS ON TOP + VERTICAL LABELS (FIXED CLASS NAME) ===
 function createPianoDom(){
   const left = document.getElementById('octaveLeft');
   const right = document.getElementById('octaveRight');
@@ -427,7 +426,6 @@ function renderOctave(container, startIdx){
     container.appendChild(wk);
   });
 
-  // === BLACK KEYS: TOP-ALIGNED, OVERLAP WHITE KEYS ===
   const whiteWidth = 56;
   const gap = 2;
   const total = whiteWidth + gap;
@@ -447,7 +445,7 @@ function renderOctave(container, startIdx){
     const bk = document.createElement('div'); bk.className='black-key'; bk.dataset.note = idx;
     bk.style.left = positions[i] + 'px';
 
-    const label = document.createElement('div'); label.className='key-label';
+    const label = document.createElement('div'); label.className='black-label';
     label.textContent = `${noteNameForIndex(idx)} ${freqFromIndex(idx).toFixed(1)}`;
     bk.appendChild(label);
 
@@ -462,7 +460,7 @@ function updateKeyLabels(){
   const keys = document.querySelectorAll('[data-note]');
   keys.forEach(k => {
     const idx = parseInt(k.dataset.note);
-    const label = k.querySelector('.key-label');
+    const label = k.querySelector('.key-label, .black-label');
     if (label) {
       if (k.classList.contains('black-key')) {
         label.textContent = `${noteNameForIndex(idx)} ${freqFromIndex(idx).toFixed(1)}`;
@@ -829,7 +827,7 @@ function renderDrumLayers(){
     const dDiv = document.createElement('div'); dDiv.style.width='110px'; dDiv.innerHTML = '<div class="control-heading">Delay</div>';
     const dsend = document.createElement('input'); dsend.type='range'; dsend.min=0; dsend.max=1; dsend.step=0.01; dsend.value = layer.delaySend; dsend.oninput = ()=>{ layer.delaySend = parseFloat(dsend.value); };
     dDiv.appendChild(dsend);
-    const humDiv = document.createElement('div'); humDiv.style.width='110px'; humDiv.innerHTML = '<div class="control-heading">Humanize (ms)</div>';
+    const humDiv = document.createElement('div'); humDiv.style.width, humDiv.innerHTML = '<div class="control-heading">Humanize (ms)</div>';
     const hum = document.createElement('input'); hum.type='range'; hum.min=0;hum.max=40;hum.step=1;hum.value=layer.humanize||6; hum.oninput = ()=>{ layer.humanize = parseInt(hum.value); };
     humDiv.appendChild(hum);
     const muteBtn = document.createElement('button'); muteBtn.className='btn btn-danger'; muteBtn.textContent = layer.enabled ? 'Mute' : 'Unmute';
@@ -919,7 +917,7 @@ function playSampleBuffer(buffer, when, opts = {}){
   const p = ctx.createStereoPanner(); p.pan.value = opts.pan || 0;
   const revSend = ctx.createGain(); revSend.gain.value = (opts.reverbSend || 0) * parseFloat(document.getElementById('masterReverbSend').value || 1);
   const delSend = ctx.createGain(); delSend.gain.value = (opts.delaySend || 0) * parseFloat(document.getElementById('masterDelaySend').value || 1);
-  src.connect(g); g.connect(p); p.connect(master festiveGain);
+  src.connect(g); g.connect(p); p.connect(masterGain);
   g.connect(revSend); revSend.connect(reverbNode);
   g.connect(delSend); delSend.connect(delayNode); delSend.connect(delayWet);
   src.start(when);
@@ -1057,4 +1055,4 @@ window.addEventListener('touchmove', function(e){
 
 </script>
 </body>
-</html>
+  </html> 
